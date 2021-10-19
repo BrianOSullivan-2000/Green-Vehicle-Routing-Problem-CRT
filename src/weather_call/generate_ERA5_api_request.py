@@ -3,6 +3,9 @@
 # https://cds.climate.copernicus.eu/cdsapp#!/home
 # File will be available through account once request is processed
 
+# API request can also be auto-generated at
+# https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-land?tab=form
+
 def generate_ERA5_api_request(years, variables, months, days, times, latitude=(56, 50),
                               longitude=(-11, -5), format='grib'):
 
@@ -41,7 +44,3 @@ def generate_ERA5_api_request(years, variables, months, days, times, latitude=(5
             'format': format,
         },
         'download' + format_extension)
-
-
-
-generate_ERA5_api_request()
