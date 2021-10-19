@@ -1,3 +1,7 @@
+# Script to send request for ERA5 re-reanalysis
+# data through cdsAPI, variables/times/days/months
+# are predetermined
+
 import cdsapi
 
 c = cdsapi.Client()
