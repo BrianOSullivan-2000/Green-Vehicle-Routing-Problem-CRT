@@ -23,6 +23,8 @@ df1 = df.dropna(thresh=3)
 df1 = df1.drop(df1[df1.Elev==0].index)
 
 # Shapefile to be used as overlay
+# This .shp file is too large to be added to the git repo
+# It can be accessed from https://www.townlands.ie/page/download/
 dub_df = gpd.read_file("data/dublin/townlands.shp")
 
 # Both GeoDataFrames need to have same projection for plotting
