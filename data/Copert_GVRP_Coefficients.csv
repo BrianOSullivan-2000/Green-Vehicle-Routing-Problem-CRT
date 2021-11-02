@@ -1,0 +1,26 @@
+"","Category","Fuel","Segment","Euro.Standard","Technology","Pollutant","Mode","Road.Slope","Load","Min.Speed..km.h.","Max.Speed..km.h.","Alpha","Beta","Gamma","Delta","Epsilon","Zita","Hta","Reduction.Factor....","Bio.Reduction.Factor....","X15","EF..g.km..or.ECF..MJ.km."
+"2066","Passenger Cars","Diesel","Large-SUV-Executive","Euro 6 d","DPF","EC","",NA,NA,10,130,0,"0.0","13.7","0.0","0.0","0.1","1.6","0.0%","0.0%",15,4.2603
+"2075","Passenger Cars","Diesel","Large-SUV-Executive","Euro 6 d","DPF+SCR","EC","",NA,NA,10,130,0,"0.0","13.7","0.0","0.0","0.1","1.6","0.0%","0.0%",15,4.2603
+"4154","Light Commercial Vehicles","Diesel","N1-III","Euro 6 d","DPF","EC","",NA,NA,5,130,0,"0.1","4.2","2.9","0.0","0.1","0.4","0.0%","0.0%",15,4.3606
+"4163","Light Commercial Vehicles","Diesel","N1-III","Euro 6 d","DPF+SCR","EC","",NA,NA,5,130,0,"0.1","4.2","2.9","0.0","0.1","0.4","0.0%","0.0%",15,4.3606
+"5410","Heavy Duty Trucks","Diesel","Rigid <=7,5 t","Euro VI D/E","DPF+SCR","EC","",-0.06,0,5,85,0,"1.1","-6.3","12.5","0.0","-0.2","0.5","0.0%","0.0%",15,1.9509
+"5411","Heavy Duty Trucks","Diesel","Rigid <=7,5 t","Euro VI D/E","DPF+SCR","EC","",-0.06,0.5,5,85,0,"0.5","-3.3","6.8","0.0","-0.1","0.3","0.0%","0.0%",15,1.8938
+"5412","Heavy Duty Trucks","Diesel","Rigid <=7,5 t","Euro VI D/E","DPF+SCR","EC","",-0.06,1,5,85,0,"0.5","-3.5","7.3","0.0","-0.1","0.3","0.0%","0.0%",15,1.8783
+"5413","Heavy Duty Trucks","Diesel","Rigid <=7,5 t","Euro VI D/E","DPF+SCR","EC","",-0.04,0,5,85,0,"-0.1","4.8","5.0","0.0","0.1","0.6","0.0%","0.0%",15,2.7492
+"5414","Heavy Duty Trucks","Diesel","Rigid <=7,5 t","Euro VI D/E","DPF+SCR","EC","",-0.04,0.5,5,85,0,"1.2","-5.5","10.0","0.0","-0.1","0.3","0.0%","0.0%",15,2.752
+"5415","Heavy Duty Trucks","Diesel","Rigid <=7,5 t","Euro VI D/E","DPF+SCR","EC","",-0.04,1,5,85,0,"1.3","-6.2","10.8","0.0","-0.1","0.3","0.0%","0.0%",15,2.8546
+"5416","Heavy Duty Trucks","Diesel","Rigid <=7,5 t","Euro VI D/E","DPF+SCR","EC","",-0.02,0,5,85,0,"0.0","17.4","5.8","0.0","0.2","1.5","0.0%","0.0%",15,3.825
+"5417","Heavy Duty Trucks","Diesel","Rigid <=7,5 t","Euro VI D/E","DPF+SCR","EC","",-0.02,0.5,5,85,0,"-0.1","14.4","1.6","0.0","0.2","1.2","0.0%","0.0%",15,3.9876
+"5418","Heavy Duty Trucks","Diesel","Rigid <=7,5 t","Euro VI D/E","DPF+SCR","EC","",-0.02,1,5,85,0.1,"1.5","-8.0","23.9","0.0","-0.3","1.1","0.0%","0.0%",15,4.0637
+"5419","Heavy Duty Trucks","Diesel","Rigid <=7,5 t","Euro VI D/E","DPF+SCR","EC","",0,0,5,85,0,"0.1","5.1","-0.1","0.0","0.1","0.4","0.0%","0.0%",15,5.1486
+"5420","Heavy Duty Trucks","Diesel","Rigid <=7,5 t","Euro VI D/E","DPF+SCR","EC","",0,0.5,5,85,0,"0.1","3.2","-0.8","0.0","0.0","0.2","0.0%","0.0%",15,5.6765
+"5421","Heavy Duty Trucks","Diesel","Rigid <=7,5 t","Euro VI D/E","DPF+SCR","EC","",0,1,5,85,0,"0.1","4.0","-1.5","0.0","0.0","0.2","0.0%","0.0%",15,6.2188
+"5422","Heavy Duty Trucks","Diesel","Rigid <=7,5 t","Euro VI D/E","DPF+SCR","EC","",0.02,0,5,85,0,"0.1","4.1","-1.3","0.0","0.1","0.2","0.0%","0.0%",15,6.5684
+"5423","Heavy Duty Trucks","Diesel","Rigid <=7,5 t","Euro VI D/E","DPF+SCR","EC","",0.02,0.5,5,85,0,"0.2","4.2","-1.8","0.0","0.0","0.2","0.0%","0.0%",15,7.5312
+"5424","Heavy Duty Trucks","Diesel","Rigid <=7,5 t","Euro VI D/E","DPF+SCR","EC","",0.02,1,5,85,0,"0.2","5.0","-1.0","0.0","0.0","0.3","0.0%","0.0%",15,8.5401
+"5425","Heavy Duty Trucks","Diesel","Rigid <=7,5 t","Euro VI D/E","DPF+SCR","EC","",0.04,0,5,85,0,"0.2","3.4","0.1","0.0","0.0","0.2","0.0%","0.0%",15,8.0921
+"5426","Heavy Duty Trucks","Diesel","Rigid <=7,5 t","Euro VI D/E","DPF+SCR","EC","",0.04,0.5,5,80,0,"0.5","8.2","-0.2","0.0","0.1","0.4","0.0%","0.0%",15,9.5765
+"5427","Heavy Duty Trucks","Diesel","Rigid <=7,5 t","Euro VI D/E","DPF+SCR","EC","",0.04,1,5,75,0,"0.3","8.6","1.5","0.0","0.0","0.5","0.0%","0.0%",15,11.0948
+"5428","Heavy Duty Trucks","Diesel","Rigid <=7,5 t","Euro VI D/E","DPF+SCR","EC","",0.06,0,5,80,0,"0.3","3.9","0.4","0.0","0.0","0.2","0.0%","0.0%",15,9.683
+"5429","Heavy Duty Trucks","Diesel","Rigid <=7,5 t","Euro VI D/E","DPF+SCR","EC","",0.06,0.5,5,70,0,"0.0","5.8","3.2","0.0","0.0","0.4","0.0%","0.0%",15,11.7153
+"5430","Heavy Duty Trucks","Diesel","Rigid <=7,5 t","Euro VI D/E","DPF+SCR","EC","",0.06,1,5,60,0,"-0.8","7.1","8.1","0.0","-0.1","0.6","0.0%","0.0%",15,13.7202

@@ -1,0 +1,39 @@
+Traffic volumes data across Dublin City from the SCATS traffic management system. The Sydney Coordinated Adaptive Traffic System (SCATS) is an intelligent transportation system used to manage timing of signal phases at traffic signals. SCATS uses sensors at each traffic signal to detect vehicle presence in each lane and pedestrians waiting to cross at the local site. The vehicle sensors are generally inductive loops installed within the road.
+
+3 resources are provided:
+
+SCATS Traffic Volumes Data (Monthly)
+Contained in this report are traffic counts taken from the SCATS traffic detectors located at junctions. The primary function for these traffic detectors is for traffic signal control. Such devices can also count general traffic volumes at defined locations on approach to a junction. These devices are set at specific locations on approaches to the junction but may not be on all approaches to a junction. As there are multiple junctions on any one route, it could be expected that a vehicle would be counted multiple times as it progress along the route. Thus the traffic volume counts here are best used to represent trends in vehicle movement by selecting a specific junction on the route which best represents the overall traffic flows.
+
+Information provided:
+
+End Time: time that one hour count period finishes.
+
+Region: location of the detector site (e.g. North City, West City, etc).
+
+Site: this can be matched with the SCATS Sites file to show location
+
+Detector: the detectors/ sensors at each site are numbered
+
+Sum volume: total traffic volumes in preceding hour
+
+Avg volume: average traffic volumes per 5 minute interval in preceding hour
+
+All Dates Traffic Volumes Data
+
+This file contains daily totals of traffic flow at each site location.
+
+SCATS Site Location Data
+Contained in this report, the location data for the SCATS sites is provided. The meta data provided includes the following;
+
+Site id – This is a unique identifier for each junction on SCATS
+
+Site description( CAP) – Descriptive location of the junction containing street name(s) intersecting streets
+
+Site description (lower) - – Descriptive location of the junction containing street name(s) intersecting streets
+
+Region – The area of the city, adjoining local authority, region that the site is located
+
+LAT/LONG – Coordinates
+
+Disclaimer: the location files are regularly updated to represent the locations of SCATS sites under the control of Dublin City Council. However site accuracy is not absolute. Information for LAT/LONG and region may not be available for all sites contained. It is at the discretion of the user to link the files for analysis and to create further data. Furthermore, detector communication issues or faulty detectors could also result in an inaccurate result for a given period, so values should not be taken as absolute but can be used to indicate trends.
