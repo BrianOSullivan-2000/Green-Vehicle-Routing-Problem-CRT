@@ -1,4 +1,5 @@
 # this script is to process and explore the scats sites
+# and save an updated scats site file with only valid locations and geometries
 # working directory assumed project root
 
 import pandas as pd
@@ -18,7 +19,7 @@ zero_elev_index = site_data["Elev"][site_data["Elev"] == 0].index
 
 len(zero_elev_index)  # 52
 
-# checkout location of 0 elev readings
+# checkout real-world location of 0 elev readings
 site_data.iloc[zero_elev_index.tolist()]["Site_Description_Cap"]
 
 # many locations are beside water - quays etc
@@ -68,7 +69,7 @@ sites_geo_df = gpd.GeoDataFrame(valid_sites, geometry=geometry, crs="EPSG:4326")
 # plot sites data on map of dublin
 fig, ax = plt.subplots(figsize=(10, 10))
 plt.grid(True)
-dub_eds.to_crs(epsg=4326).plot(ax=ax, color="lightgrey")
+dub_eds.to_crs(epsg=4326).plot(ax=ax)
 sites_geo_df.plot(ax=ax, markersize=10, color="red")
 plt.title("Map of Dublin with SCATS Traffic Measurement Sites Marked")
 plt.xlabel("Longitude")
@@ -76,3 +77,4 @@ plt.ylabel("Latitude")
 
 # save valid sites
 valid_sites.to_pickle(".\\data\\valid_scats_sites.pkl")
+
