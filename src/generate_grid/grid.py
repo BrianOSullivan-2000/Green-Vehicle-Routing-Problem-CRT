@@ -339,8 +339,8 @@ class Grid():
                                             index=data[:, 3].astype(int),
                                             columns=data[:, 3].astype(int))
 
-            self.cost_matrix = self.cost_matrix.fillna(0)
-
         # TODO: add FMEFCM idling rates to cost computation
         else:
             print("Choose valid method")
+
+        self.cost_matrix = self.cost_matrix.fillna(0)

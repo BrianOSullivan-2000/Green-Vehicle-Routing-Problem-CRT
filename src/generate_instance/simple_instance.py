@@ -66,7 +66,6 @@ dublin.compute_cost()
 
 dublin.cost_matrix
 
-
 # In[1]
 
 import src.generate_tsplib.generate_tsplib as tsp
