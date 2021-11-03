@@ -22,6 +22,23 @@ jan_traffic = jan_traffic[["End_Time", "Site", "Sum_Volume", "Avg_Volume"]]
 # check for missing data
 jan_traffic.isnull().values.any()  # False
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# remove invalid sites (which have no location)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# load data on valid sites
+valid_sites = pd.read_pickle(".\\data\\valid_scats_sites.pkl")
+
+# isolate site ids for valid sites
+valid_site_ids = valid_sites["SiteID"]
+
+# keep only values from sites with valid ids
+jan_traffic_data = jan_traffic[jan_traffic["Site"].isin(valid_site_ids)]
+
+# ~~~~~~~~~~~~~~~~~~~~~~~
+# process data
+# ~~~~~~~~~~~~~~~~~~~~~~~
+
 # want to split End_Time into day and hour of day
 # day of month
 jan_traffic["Day_in_Month"] = jan_traffic["End_Time"].str[8:10]
