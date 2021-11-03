@@ -74,3 +74,5 @@ plt.title("Map of Dublin with SCATS Traffic Measurement Sites Marked")
 plt.xlabel("Longitude")
 plt.ylabel("Latitude")
 
+# save valid sites
+valid_sites.to_pickle(".\\data\\valid_scats_sites.pkl")
