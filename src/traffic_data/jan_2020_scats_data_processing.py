@@ -6,11 +6,12 @@
 import pandas as pd
 from zipfile import ZipFile
 
-# extract scats_detector_volume_202001 from zip file
-# will use csv file in this scrip to load
-with ZipFile(".\\data\\scats_detector_volume_202001.zip", "r") as f:
-    f.printdir()
-    f.extractall(".\\data")
+# # uncomment if needed
+# # extract scats_detector_volume_202001 from zip file
+# # will use csv file in this scrip to load
+# with ZipFile(".\\data\\scats_detector_volume_202001.zip", "r") as f:
+#     f.printdir()
+#     f.extractall(".\\data")
 
 # load raw data
 # NOTE: raw data file too large for github so not uploaded - zip file uploaded instead
@@ -48,7 +49,7 @@ jan_traffic["Hour_in_Day"] = jan_traffic["End_Time"].str[11:13]
 
 # Hour_in_Day is "time that one hour count period finishes"
 # so want to change "00" to hour "24"
-jan_traffic["Hour_in_Day"] = jan_traffic["Hour_in_Day"].replace(['00'],'24')
+jan_traffic["Hour_in_Day"] = jan_traffic["Hour_in_Day"].replace(['00'], '24')
 
 # create replacement dict for day in week
 day_in_week_map = {"06": "01", "13": "01", "20": "01", "27": "01",
