@@ -54,7 +54,7 @@ valid_sites = site_data.drop(zero_lat_index.tolist())
 # plot sites
 # ~~~~~~~~~~~~~~~~~~~~~~~~~
 # import shape file of ireland electoral districts
-eds_map = gpd.read_file("C:\\Users\\KateF\\Desktop\\eds\\eds.shp")
+eds_map = gpd.read_file(".\\data\\ireland_eds_map_data\\ireland_eds.shp")
 
 # filter shape file to just dublin electoral regions
 dub_eds = eds_map[eds_map["CO_NAME"] == "Dublin"]
@@ -67,9 +67,10 @@ sites_geo_df = gpd.GeoDataFrame(valid_sites, geometry=geometry, crs="EPSG:4326")
 
 # plot sites data on map of dublin
 fig, ax = plt.subplots(figsize=(10, 10))
+plt.grid(True)
 dub_eds.to_crs(epsg=4326).plot(ax=ax, color="lightgrey")
 sites_geo_df.plot(ax=ax, markersize=10, color="red")
 plt.title("Map of Dublin with SCATS Traffic Measurement Sites Marked")
 plt.xlabel("Longitude")
 plt.ylabel("Latitude")
-plt.grid(True)
+
