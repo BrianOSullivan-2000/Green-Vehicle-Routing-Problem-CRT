@@ -33,7 +33,6 @@ dublin = grid.Grid(lon_b=lon_b, lat_b=lat_b, h=h, load=True)
 ds = pd.read_pickle("data/scats_sites_with_elev.pkl")
 ds = ds.loc[:, "Lat":"Elev"]
 
-ds = ds.sample(100)
 
 # Clean data up a little
 ds = ds.drop(ds[ds['Long']==0].index)
@@ -43,6 +42,8 @@ ds = ds.drop(ds[ds['Long']<-6.4759].index)
 ds = ds.drop(ds[ds['Lat']>53.4598].index)
 ds = ds.drop(ds[ds['Lat']<53.2294].index)
 ds = ds[["Long", "Lat", "Elev"]]
+
+ds = ds.sample(100)
 
 # round values to grid values
 # TODO: inverstigate if ok
@@ -66,6 +67,7 @@ dublin.compute_cost()
 
 dublin.cost_matrix
 
+
 # In[1]
 
 import src.generate_tsplib.generate_tsplib as tsp
@@ -77,3 +79,12 @@ edge_weights = dublin.cost_matrix.to_numpy()
 
 tsp.generate_tsplib(filename="sample", instance_name="instance_01", capacity=100, edge_weight_type="EXPLICIT", edge_weight_format="FULL_MATRIX",
                     nodes=nodes, demand=np.ones(len(nodes)), depot_index=[0], edge_weights=edge_weights)
+
+
+# In[1]
+
+# This just quickly checks if the array is symmetric
+def check_symmetric(a, rtol=1e-05, atol=1e-08):
+    return np.allclose(a, a.T, rtol=rtol, atol=atol)
+
+check_symmetric(edge_weights)

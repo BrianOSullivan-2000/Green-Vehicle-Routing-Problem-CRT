@@ -52,8 +52,8 @@ def map_plot(gdf, variable, markersize):
     dub_df.plot(ax=ax, color="white", edgecolor="black", alpha=1)
 
     # Plot data
-    #gdf.plot(ax=ax, column=variable, cmap='terrain', vmin = 0, vmax = 150,
-    #         marker=',', markersize=markersize, legend=True, alpha=1)
+    gdf.plot(ax=ax, column=variable, cmap='terrain', vmin = 0, vmax = 150,
+             marker=',', markersize=markersize, legend=True, alpha=1)
 
     gdf.plot(ax=ax, color="k", marker=',', markersize=5)
 
