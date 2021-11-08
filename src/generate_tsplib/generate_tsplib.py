@@ -1,5 +1,5 @@
 """ this script details a function to generate an instance file in TSPLib formatting """
-
+import numpy as np
 
 def generate_tsplib(filename, instance_name, capacity, edge_weight_type, edge_weight_format, nodes, demand,
                     depot_index, edge_weights):
@@ -51,6 +51,7 @@ def generate_tsplib(filename, instance_name, capacity, edge_weight_type, edge_we
             for i in range(len(edge_weights)):
                 print(i+1, edge_weights[i][0], edge_weights[i][1], edge_weights[i][2], file=f)
         if edge_weight_format == "FULL_MATRIX":
-            print(edge_weights, file=f)
+            with np.printoptions(threshold=np.inf):
+                print(edge_weights, file=f)
         print("EOF", file=f)
     return

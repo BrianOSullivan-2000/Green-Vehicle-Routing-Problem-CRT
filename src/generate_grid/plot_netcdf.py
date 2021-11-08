@@ -1,45 +1,45 @@
-import xarray as xr
-import netCDF4 as nc
 import pandas as pd
 import geopandas as gpd
-import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
-import numpy as np
 
+# Plot for plotting instances
+# TODO: Turn into function which can be called in other files
 
 # In[1]
 
-
-# Bounding box for Dublin
-lon_b = (-6.475924, -6.084280)
-lat_b = (53.229386, 53.459765)
-
-# Read in points from data folder
 ds = pd.read_pickle("data/scats_sites_with_elev.pkl")
 
 # Filter data
-df = ds.loc[:, "Lat":"Elev"]
-df1 = df.dropna(thresh=3)
-df1 = df1.drop(df1[df1.Elev==0].index)
+ds = ds.drop(ds[ds['Long']==0].index)
+ds = ds.drop(ds[ds['Lat']==0].index)
+ds = ds.drop(ds[ds['Long']>-6.0843].index)
+ds = ds.drop(ds[ds['Long']<-6.4759].index)
+ds = ds.drop(ds[ds['Lat']>53.4598].index)
+ds = ds.drop(ds[ds['Lat']<53.2294].index)
+df1 = ds[["Long", "Lat", "Elev"]]
 
-# Shapefile to be used as overlay
-dub_df = gpd.read_file("data/dublin/townlands.shp")
+# Make dataframe
+names = {'Elevation':df1['Elev'], 'longitude':df1['Long'], 'latitude':df1['Lat']}
+df1 = pd.DataFrame(data = names)
 
+# point geometry
+geometry1 = gpd.points_from_xy(df1['longitude'], df1['latitude'])
+# data
+names1 = {'Elevation':df1['Elevation'], 'longitude':df1['longitude'], 'latitude':df1['latitude']}
+
+# map DataFrame
+map_df1 = pd.DataFrame(data = names1)
+
+# geopandas DataFrame
+gdf1 = gpd.GeoDataFrame(map_df1, columns=['Elevation'], geometry=geometry1, crs={'init' : 'epsg:4326'})
+
+
+# Dublin shapefile (NOT IN GITHUB, go to https://www.townlands.ie/page/download/ to access)
+dub_df = gpd.read_file("../Brians_Lab/data/townlands.shp")
 # Both GeoDataFrames need to have same projection for plotting
 dub_df = dub_df.set_crs(epsg=4326)
 
-
 # In[2]
-
-
-# Create GeoDataFrame with point geometry
-geometry = gpd.points_from_xy(df1['Long'], df1['Lat'])
-names = {'Elevation':df1['Elev'], 'longitude':df1['Long'], 'latitude':df1['Lat']}
-map_df = pd.DataFrame(data = names)
-gdf = gpd.GeoDataFrame(map_df, columns=['Elevation'], geometry=geometry, crs={'init' : 'epsg:4326'})
-
-
-# In[3]
 
 # Plotting function for GeoDataFrames
 def map_plot(gdf, variable, markersize):
@@ -49,16 +49,22 @@ def map_plot(gdf, variable, markersize):
     fig, ax = plt.subplots(1, 1, figsize=(10,10))
 
     # Dublin map overlay
-    dub_df.plot(ax=ax, color="white", edgecolor="black", alpha=0.2)
+    dub_df.plot(ax=ax, color="white", edgecolor="black", alpha=1)
 
     # Plot data
-    gdf.plot(ax=ax, column=variable, cmap='rainbow', vmin = 0, vmax = 150, marker=',', markersize=markersize, legend=True)
+    gdf.plot(ax=ax, column=variable, cmap='terrain', vmin = 0, vmax = 150,
+             marker=',', markersize=markersize, legend=True, alpha=1)
 
+    gdf.plot(ax=ax, color="k", marker=',', markersize=5)
 
-# In[4]
+# In[3]
 
-# Final output
-map_plot(gdf, 'Elevation', 5)
+# Bounds for limits
+lon_b = (-6.4759, -6.0843)
+lat_b = (53.2294, 53.4598)
+
+# Plot
+map_plot(gdf1, 'Elevation', 2)
 plt.xlim(lon_b)
 plt.ylim(lat_b)
 plt.show()

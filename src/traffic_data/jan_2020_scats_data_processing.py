@@ -6,11 +6,12 @@
 import pandas as pd
 from zipfile import ZipFile
 
-# extract scats_detector_volume_202001 from zip file
-# will use csv file in this scrip to load
-with ZipFile(".\\data\\scats_detector_volume_202001.zip", "r") as f:
-    f.printdir()
-    f.extractall(".\\data")
+# # uncomment if needed
+# # extract scats_detector_volume_202001 from zip file
+# # will use csv file in this scrip to load
+# with ZipFile(".\\data\\scats_detector_volume_202001.zip", "r") as f:
+#     f.printdir()
+#     f.extractall(".\\data")
 
 # load raw data
 # NOTE: raw data file too large for github so not uploaded - zip file uploaded instead
@@ -22,6 +23,23 @@ jan_traffic = jan_traffic[["End_Time", "Site", "Sum_Volume", "Avg_Volume"]]
 # check for missing data
 jan_traffic.isnull().values.any()  # False
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# remove invalid sites (which have no location)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+# load data on valid sites
+valid_sites = pd.read_pickle(".\\data\\valid_scats_sites.pkl")
+
+# isolate site ids for valid sites
+valid_site_ids = valid_sites["SiteID"]
+
+# keep only values from sites with valid ids
+jan_traffic_data = jan_traffic[jan_traffic["Site"].isin(valid_site_ids)]
+
+# ~~~~~~~~~~~~~~~~~~~~~~~
+# process data
+# ~~~~~~~~~~~~~~~~~~~~~~~
+
 # want to split End_Time into day and hour of day
 # day of month
 jan_traffic["Day_in_Month"] = jan_traffic["End_Time"].str[8:10]
@@ -31,7 +49,7 @@ jan_traffic["Hour_in_Day"] = jan_traffic["End_Time"].str[11:13]
 
 # Hour_in_Day is "time that one hour count period finishes"
 # so want to change "00" to hour "24"
-jan_traffic["Hour_in_Day"] = jan_traffic["Hour_in_Day"].replace(['00'],'24')
+jan_traffic["Hour_in_Day"] = jan_traffic["Hour_in_Day"].replace(['00'], '24')
 
 # create replacement dict for day in week
 day_in_week_map = {"06": "01", "13": "01", "20": "01", "27": "01",

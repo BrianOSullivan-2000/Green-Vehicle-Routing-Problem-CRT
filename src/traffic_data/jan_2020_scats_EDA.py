@@ -6,10 +6,11 @@ from zipfile import ZipFile
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# unzip processed scats data for jan 2020
-with ZipFile(".\\data\\scats_jan2020_processed_data.zip", "r") as f:
-    f.printdir()
-    f.extractall(".\\data")
+# # unzip processed scats data for jan 2020
+# # uncomment if needed
+# with ZipFile(".\\data\\scats_jan2020_processed_data.zip", "r") as f:
+#     f.printdir()
+#     f.extractall(".\\data")
 
 # load pickle with processed scats data for jan 2020
 jan_traffic_data = pd.read_pickle(".\\data\\scats_jan2020_processed_data.pkl")
@@ -61,6 +62,22 @@ plt.title("Mean Vehicle Count by Hour in Day")
 plt.grid(True)
 plt.legend(title="Day in Week")
 
+# weekday and weekend seem to have more significant difference
+# so get relative traffic volumes for these cases separately
+
+# weekday
+wd_jan_traffic = jan_traffic_data[jan_traffic_data["Day_Type"] == "WD"].copy()
+
+# range normalise b/t 1 and 0
+wd_norm_traffic_val = (wd_jan_traffic["Sum_Volume"] - min(wd_jan_traffic["Sum_Volume"])) / (max(wd_jan_traffic["Sum_Volume"]) - min(wd_jan_traffic["Sum_Volume"]))
+
+wd_jan_traffic["Norm_Vol_WD"] = wd_norm_traffic_val
+
+# weekend
+we_jan_traffic = jan_traffic_data[jan_traffic_data["Day_Type"] == "WE"].copy()
+
+# range normalise b/t 1 and 0
+we_jan_traffic["Norm_Traffic_Val"] = (we_jan_traffic["Sum_Volume"] - min(we_jan_traffic["Sum_Volume"])) / (max(we_jan_traffic["Sum_Volume"]) - min(we_jan_traffic["Sum_Volume"]))
 
 # TODO: update with further stats if needed
 # TODO: make table for report
