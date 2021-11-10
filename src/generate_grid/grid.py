@@ -59,7 +59,9 @@ class Grid():
 
             # Find corresponding index for lon, lat
             index = (np.where(self.x == i[0])[0], np.where(self.y == i[1])[0])
-            self.elevation[index[0][0], index[1][0]] = i[2]
+
+            if np.all(index):
+                self.elevation[index[0][0], index[1][0]] = i[2]
 
 
     def add_vertices(self, data):
@@ -75,8 +77,11 @@ class Grid():
 
             # Find corresponding index for lon, lat
             index = (np.where(self.x == i[0])[0], np.where(self.y == i[1])[0])
-            self.vertice[index[0][0], index[1][0]] = self.vertice_count
-            self.vertice_count += 1
+
+            # condition if index isn't found in grid
+            if np.all(index):
+                self.vertice[index[0][0], index[1][0]] = self.vertice_count
+                self.vertice_count += 1
 
 
     def create_interpolation(self, data):
@@ -155,7 +160,7 @@ class Grid():
                                                 index=data[:, 3].astype(int),
                                                 columns=data[:, 3].astype(int))
 
-        if mode == "Manhattan":
+        elif mode == "Manhattan":
 
             # Find great circle distances from lon/lat values
             lons = data[:, 0]
@@ -175,6 +180,16 @@ class Grid():
             self.distance_matrix = pd.DataFrame((d).sum(axis=0),
                                                 index=data[:, 3].astype(int),
                                                 columns=data[:, 3].astype(int))
+
+
+        elif mode == "OSM":
+
+            # Read distance matrix prepper from process_osm.py
+            self.distance_matrix = pd.read_csv("data/distance_matrices/n50.csv")
+
+            self.distance_matrix = self.distance_matrix.set_index("Unnamed: 0")
+            self.distance_matrix.index.name = None
+
 
 
     def compute_gradient(self):

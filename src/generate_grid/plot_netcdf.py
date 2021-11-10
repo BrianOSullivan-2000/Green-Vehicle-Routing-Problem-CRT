@@ -68,3 +68,16 @@ map_plot(gdf1, 'Elevation', 2)
 plt.xlim(lon_b)
 plt.ylim(lat_b)
 plt.show()
+
+
+# In[4]
+
+# Read OSM distance data
+import geopandas as gpd
+
+gdf = gpd.read_file("data/dublin_driving_network.geojson")
+
+
+gdf = gdf.loc[:, "length":"geometry"]
+
+gdf
