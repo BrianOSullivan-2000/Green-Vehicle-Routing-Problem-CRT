@@ -10,7 +10,6 @@ import math
 import networkx as nx
 import momepy
 
-# In[1]
 
 # Bounding box for Dublin
 lon_b = (-6.475924, -6.084280)
@@ -28,19 +27,18 @@ h = 0.0001
 dublin = grid.Grid(lon_b=lon_b, lat_b=lat_b, h=h, load=True)
 
 
-# In[2]
 
 # Scat site testing data
 ds = pd.read_pickle("data/scats_sites_with_elev.pkl")
 ds = ds.loc[:, "Lat":"Elev"]
 
 # Vertices
-vdf = pd.read_csv("data/distance_matrices/n50.csv")
-vdf = vdf.set_index("Unnamed: 0")
-vdf.index.name = None
+vdf = pd.read_json("data/distance_matrices/n100.json")
+#vdf = vdf.set_index("Unnamed: 0")
+#vdf.index.name = None
 
 # Read osm graph to get coordinates
-G = nx.read_gpickle("data/dublin_graph.gpickle")
+G = nx.read_gpickle("data/dublin_graph.gpickle/dublin_graph.gpickle")
 nodes, edges, W = momepy.nx_to_gdf(G, spatial_weights=True)
 
 nodes = nodes[nodes["osmid"].isin(vdf.index)]
@@ -61,7 +59,7 @@ ds = ds[["Long", "Lat", "Elev"]]
 ds = ds.sample(100)
 
 # round values to grid values
-# TODO: inverstigate if ok
+# TODO: investigate if ok
 epoints = np.round(ds.to_numpy(), 4)
 
 # add points to grid
@@ -92,7 +90,7 @@ nodes = nodes[:, 0:2]
 edge_weights = dublin.cost_matrix.to_numpy()
 
 
-tsp.generate_tsplib(filename="sample_n43", instance_name="instance_02", capacity=100, edge_weight_type="EXPLICIT", edge_weight_format="FULL_MATRIX",
+tsp.generate_tsplib(filename="sample_n81", instance_name="instance", capacity=100, edge_weight_type="EXPLICIT", edge_weight_format="FULL_MATRIX",
                     nodes=nodes, demand=np.ones(len(nodes)), depot_index=[0], edge_weights=edge_weights)
 
 

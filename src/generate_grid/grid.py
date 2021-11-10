@@ -79,7 +79,9 @@ class Grid():
             index = (np.where(self.x == i[0])[0], np.where(self.y == i[1])[0])
 
             # condition if index isn't found in grid
-            if np.all(index):
+            if ((len(index[0]) == 1) and (len(index[1]) == 1)):
+
+                print(index)
                 self.vertice[index[0][0], index[1][0]] = self.vertice_count
                 self.vertice_count += 1
 
