@@ -81,7 +81,6 @@ class Grid():
             # condition if index isn't found in grid
             if ((len(index[0]) == 1) and (len(index[1]) == 1)):
 
-                print(index)
                 self.vertice[index[0][0], index[1][0]] = self.vertice_count
                 self.vertice_count += 1
 

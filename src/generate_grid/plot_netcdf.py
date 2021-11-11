@@ -18,6 +18,7 @@ ds = ds.drop(ds[ds['Lat']>53.4598].index)
 ds = ds.drop(ds[ds['Lat']<53.2294].index)
 df1 = ds[["Long", "Lat", "Elev"]]
 
+
 # Make dataframe
 names = {'Elevation':df1['Elev'], 'longitude':df1['Long'], 'latitude':df1['Lat']}
 df1 = pd.DataFrame(data = names)
@@ -68,16 +69,3 @@ map_plot(gdf1, 'Elevation', 2)
 plt.xlim(lon_b)
 plt.ylim(lat_b)
 plt.show()
-
-
-# In[4]
-
-# Read OSM distance data
-import geopandas as gpd
-
-gdf = gpd.read_file("data/dublin_driving_network.geojson")
-
-
-gdf = gdf.loc[:, "length":"geometry"]
-
-gdf
