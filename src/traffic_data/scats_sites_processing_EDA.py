@@ -75,6 +75,8 @@ plt.title("Map of Dublin with SCATS Traffic Measurement Sites Marked")
 plt.xlabel("Longitude")
 plt.ylabel("Latitude")
 
-# save valid sites
+# save valid sites as plain df
 valid_sites.to_pickle(".\\data\\valid_scats_sites.pkl")
 
+# save geometry df
+sites_geo_df.to_pickle(".\\data\\valid_scats_sites_geom.pkl")
