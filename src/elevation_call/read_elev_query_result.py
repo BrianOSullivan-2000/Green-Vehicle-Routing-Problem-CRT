@@ -5,14 +5,19 @@
 import json
 from pandas import DataFrame
 
-# open json file with API call results
-# save to a dict
-with open(".\\data\\elev_call_results.json", "r") as f:
-    elev_call_data = json.load(f)
 
-# convert dict to pandas dataframe
-# with lat, long, elevation as cols
-elevation_df = DataFrame.from_dict(elev_call_data["results"])
+def read_elev_res(input_filepath, output_filepath):
 
-# save as pickle
-elevation_df.to_pickle(".\\data\\post_and_elev.pkl")
+    # open json file with API call results
+    # save to a dict
+    with open(input_filepath, "r") as f:
+        elev_call_data = json.load(f)
+
+    # convert dict to pandas dataframe
+    # with lat, long, elevation as cols
+    elevation_df = DataFrame.from_dict(elev_call_data["results"])
+
+    # save as pickle
+    elevation_df.to_pickle(output_filepath)
+
+# TODO combine into one file with curl command?
