@@ -2,6 +2,7 @@ import pandas as pd
 import networkx as nx
 import momepy
 from src.elevation_call.create_evel_query_file import create_elev_query_file
+from src.elevation_call.read_elev_query_result import read_elev_res
 
 # load df
 dublin_graph = nx.read_gpickle("data/dublin_graph.gpickle")
@@ -26,3 +27,7 @@ n50_lat_long = n50_lat_long.reset_index(drop=True)
 n50_lat_long.to_pickle("data/instance_elevs/n50/n50_lat_long.pkl")
 
 create_elev_query_file("data/instance_elevs/n50/n50_lat_long.pkl", "data/instance_elevs/n50/n50_to_query.json")
+
+read_elev_res("data/instance_elevs/n50/n50_query_results.json", "data/instance_elevs/n50/n50_lat_long_elev.pkl")
+
+# TODO comment better
