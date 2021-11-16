@@ -67,10 +67,10 @@ geometry = gpd.points_from_xy(valid_sites["Long"], valid_sites["Lat"], crs="EPSG
 sites_geo_df = gpd.GeoDataFrame(valid_sites, geometry=geometry, crs="EPSG:4326")
 
 # plot sites data on map of dublin
-fig, ax = plt.subplots(figsize=(10, 10))
+fig, ax = plt.subplots()
 plt.grid(True)
-dub_eds.to_crs(epsg=4326).plot(ax=ax)
-sites_geo_df.plot(ax=ax, markersize=10, color="red")
+dub_eds.to_crs(epsg=4326).plot(ax=ax, color="lightgrey")
+sites_geo_df.plot(ax=ax, markersize=5, color="red")
 plt.title("Map of Dublin with SCATS Traffic Measurement Sites Marked")
 plt.xlabel("Longitude")
 plt.ylabel("Latitude")
