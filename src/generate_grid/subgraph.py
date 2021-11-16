@@ -7,6 +7,7 @@ import momepy
 import pandas as pd
 import itertools
 from shapely import geometry, ops
+from shapely.geometry import Polygon
 
 
 # In[1]
@@ -26,19 +27,19 @@ nodes, edges, W = momepy.nx_to_gdf(G, spatial_weights=True)
 
 nds, eds = nodes, edges
 
-
-#nds = nds[nds['osmid'].isin(np.unique(eds.loc[:, 'u':'v']))]
-
 # Bounding box
-lon_b = (-6.41, -6.0843)
-lat_b = (53.2294, 53.43)
+lon_b = (-6.35, -6.2)
+lat_b = (53.3, 53.38)
 
 nds = nds.drop(nds[nds['x']==0].index)
 nds = nds.drop(nds[nds['y']==0].index)
-nds = nds.drop(nds[nds['x']>-6.0843].index)
-nds = nds.drop(nds[nds['x']<-6.41].index)
-nds = nds.drop(nds[nds['y']>53.43].index)
-nds = nds.drop(nds[nds['y']<53.2294].index)
+nds = nds.drop(nds[nds['x']>-6.2].index)
+nds = nds.drop(nds[nds['x']<-6.35].index)
+nds = nds.drop(nds[nds['y']>53.38].index)
+nds = nds.drop(nds[nds['y']<53.3].index)
+
+bounding_box = Polygon([[lon_b[0], lat_b[0]], [lon_b[1], lat_b[0]], [lon_b[1], lat_b[1]], [lon_b[0], lat_b[1]]])
+eds = eds[eds.within(bounding_box)]
 
 
 # In[1]
@@ -47,7 +48,8 @@ nds = nds.drop(nds[nds['y']<53.2294].index)
 types = np.unique(eds.dropna(subset=['highway'])['highway'].values)
 types
 # Only have network of main roads
-main_roads = types[[4, 5, 8, 9, 11, 12, 17, 18]]
+main_roads = types[[2, 3, 6, 7, 12, 13]]
+
 
 eds = eds[eds['highway'].isin(main_roads)]
 
@@ -108,8 +110,6 @@ n2_ids = np.array(n2_ids)
 # In[1]
 
 
-eds = eds1
-
 # Drop duplicate rows
 eds = eds.drop_duplicates(subset=['node_start', 'node_end'], keep='first')
 eds = eds.loc[:, ['geometry', 'length', 'node_start', 'node_end']]
@@ -118,7 +118,7 @@ eds = eds.loc[:, ['geometry', 'length', 'node_start', 'node_end']]
 truecount, del_ids = 0, []
 loops = 0
 
-while (truecount < 38000) and (loops < 20):
+while (truecount < len(n2_ids)*0.95) and (loops < 200):
 
     n2_neighbours = np.empty((n2_ids.shape[0], 2))
     count = 0
@@ -159,12 +159,15 @@ while (truecount < 38000) and (loops < 20):
                     del_ids.append(id)
 
                 else:
+                    del_ids.append(id)
                     eds.drop(idx)
 
                 truecount += 1
         count += 1
 
     loops += 1
+    if loops % 10 == 0:
+        print(loops // 10)
 
     if len(lens) != 0:
 
@@ -192,22 +195,25 @@ dub_df = dub_df[dub_df["NAME_TAG"]=="Dublin"]
 
 # In[1]
 
-fig, ax = plt.subplots(1, 1, figsize=(15,15))
+fig, ax = plt.subplots(1, 1, figsize=(10,10))
 
 # Add county border
 dub_df.plot(ax=ax, color="c", edgecolor="k", alpha=0.4, zorder=2)
 
 # Plot road network and paths
+graph_plot = momepy.gdf_to_nx(eds)
+nds, eds = momepy.nx_to_gdf(graph_plot)
+
 eds.plot(ax=ax, alpha=0.2, color="k", linewidth=2, zorder=3)
-#nds.plot(ax=ax, color='r', markersize=0.1)
+nds.plot(ax=ax, color='r', markersize=0.5)
 
 # Bounds for limits
 lon_b = (-6.41, -6.0843)
 lat_b = (53.2294, 53.43)
 
 # Limits for city centre
-#lon_b = (-6.4, -6.15)
-#lat_b = (53.25, 53.45)
+lon_b = (-6.35, -6.2)
+lat_b = (53.3, 53.38)
 
 # Plot
 plt.xlim(lon_b)
@@ -217,8 +223,50 @@ plt.show()
 
 # In[1]
 
-# TODO: Choose random nodes
-# find paths (and lengths) between nodes
-# if one of selected nodes lies on path, delete path
-# hopefully this leads to sparse network
-# if not, you're going to have to zoom in on the network more
+
+graph = momepy.gdf_to_nx(eds)
+
+nds1, eds1 = momepy.nx_to_gdf(graph)
+
+indices = np.arange(np.array(list(graph.nodes)).shape[0])
+
+sample_ids = np.random.choice(indices, 100)
+sample_coords = np.array(list(graph.nodes))[sample_ids]
+
+# Create empty distance_matrix
+N = len(sample_coords)
+dists = np.zeros((N,N))
+distance_matrix = pd.DataFrame(data=dists, index=sample_ids, columns=sample_ids)
+
+# count for tracking
+count = 0
+
+# every node pair combination
+pairs = np.array(list(itertools.combinations(sample_coords, 2)))
+id_pairs = np.array(list(itertools.combinations(sample_ids, 2)))
+
+# loop through node pairs, find path_length for each
+for i in range(len(pairs)):
+
+    pair = pairs[i]
+    id_pair = id_pairs[i]
+
+    path = np.array(nx.shortest_path(graph, tuple(pair[0]), tuple(pair[1])))
+
+    if len([i for i in path if i in sample_coords]) == 2:
+
+        # get path length, add to matrix, count
+        path_length = nx.shortest_path_length(graph, tuple(pair[0]), tuple(pair[1]))
+        distance_matrix.loc[id_pair[0], id_pair[1]] = path_length
+
+
+    # impromptu progress bar
+    count += 1
+    if count % 1000 == 0:
+        print(count // 1000)
+
+path = np.array(nx.shortest_path(graph, tuple(pairs[0][0]), tuple(pairs[0][1])))
+
+x = distance_matrix[distance_matrix != 0].values.flatten()
+len(pairs)
+len(x[~np.isnan(x)])
