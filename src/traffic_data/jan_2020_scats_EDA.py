@@ -42,15 +42,15 @@ plt.title("Mean Vehicle Count by Hour in Day")
 plt.grid(True)
 plt.legend(title="Day Type")
 
-# plot of std of counts by WE/WD per hour
-fig, ax = plt.subplots()
-summary_by_hr_wdwe.groupby("Day_Type")["std"].plot()
-plt.xlim(0, 25)
-plt.xlabel("Hour in Day")
-plt.ylabel("Std of Vehicle Count")
-plt.title("Std of Vehicle Count by Hour of Day")
-plt.grid(True)
-plt.legend(title="Day Type")
+# # plot of std of counts by WE/WD per hour
+# fig, ax = plt.subplots()
+# summary_by_hr_wdwe.groupby("Day_Type")["std"].plot()
+# plt.xlim(0, 25)
+# plt.xlabel("Hour in Day")
+# plt.ylabel("Std of Vehicle Count")
+# plt.title("Std of Vehicle Count by Hour of Day")
+# plt.grid(True)
+# plt.legend(title="Day Type")
 
 # plot of mean counts by day of week per hour
 fig, ax = plt.subplots()
@@ -61,6 +61,65 @@ plt.ylabel("Mean Vehicle Count")
 plt.title("Mean Vehicle Count by Hour in Day")
 plt.grid(True)
 plt.legend(title="Day in Week")
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# investigate the dip in Wed-Thu-Fri comp to Mon-Tue
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# checkout hypothesis that jan 1-3 are dragging down averages
+with pd.option_context('display.max_rows', None):
+    print(jan_traffic_data[["Sum_Volume", "Hour_in_Day", "Day_in_Month"]][\
+              jan_traffic_data["Day_in_Week"] == 3].groupby(["Hour_in_Day", "Day_in_Month"]).describe())
+
+# wednesdays
+# summarise by different wednesdays
+wed_data = jan_traffic_data[["Sum_Volume", "Hour_in_Day", "Day_in_Month"]][jan_traffic_data["Day_in_Week"] == 3]
+wed_data_summary = wed_data.groupby(["Hour_in_Day", "Day_in_Month"])["Sum_Volume"].describe()
+wed_data_summary = wed_data_summary.reset_index(level="Day_in_Month")
+wed_data_summary.index = wed_data_summary.index.astype(int)
+
+# plot wednesdays
+fig, ax = plt.subplots()
+wed_data_summary.groupby("Day_in_Month")["mean"].plot()
+plt.xlim(0, 25)
+plt.xlabel("Hour in Day")
+plt.ylabel("Mean Vehicle Count")
+plt.title("Wednesdays in January: Mean Vehicle Count by Hour in Day")
+plt.grid(True)
+plt.legend(title="Day in Month")
+
+# thursdays
+# summarise by different thursdays
+thu_data = jan_traffic_data[["Sum_Volume", "Hour_in_Day", "Day_in_Month"]][jan_traffic_data["Day_in_Week"] == 4]
+thu_data_summary = thu_data.groupby(["Hour_in_Day", "Day_in_Month"])["Sum_Volume"].describe()
+thu_data_summary = thu_data_summary.reset_index(level="Day_in_Month")
+thu_data_summary.index = thu_data_summary.index.astype(int)
+
+# plot thursdays
+fig, ax = plt.subplots()
+thu_data_summary.groupby("Day_in_Month")["mean"].plot()
+plt.xlim(0, 25)
+plt.xlabel("Hour in Day")
+plt.ylabel("Mean Vehicle Count")
+plt.title("Thursdays in January: Mean Vehicle Count by Hour in Day")
+plt.grid(True)
+plt.legend(title="Day in Month")
+
+# fridays
+# summarise by different fridays
+fri_data = jan_traffic_data[["Sum_Volume", "Hour_in_Day", "Day_in_Month"]][jan_traffic_data["Day_in_Week"] == 5]
+fri_data_summary = fri_data.groupby(["Hour_in_Day", "Day_in_Month"])["Sum_Volume"].describe()
+fri_data_summary = fri_data_summary.reset_index(level="Day_in_Month")
+fri_data_summary.index = fri_data_summary.index.astype(int)
+
+# plot fridays
+fig, ax = plt.subplots()
+fri_data_summary.groupby("Day_in_Month")["mean"].plot()
+plt.xlim(0, 25)
+plt.xlabel("Hour in Day")
+plt.ylabel("Mean Vehicle Count")
+plt.title("Fridays in January: Mean Vehicle Count by Hour in Day")
+plt.grid(True)
+plt.legend(title="Day in Month")
 
 # weekday and weekend seem to have more significant difference
 # so get relative traffic volumes for these cases separately
