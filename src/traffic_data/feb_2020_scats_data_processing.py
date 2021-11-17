@@ -34,35 +34,46 @@ feb_traffic_data = feb_traffic[feb_traffic["Site"].isin(valid_site_ids)]
 
 # want to split End_Time into day and hour of day
 # day of month
-feb_traffic["Day_in_Month"] = feb_traffic["End_Time"].str[8:10]
+feb_traffic["Day_in_Month"] = feb_traffic["End_Time"].str[8:10].astype("int64")
 
 # hour of day
-feb_traffic["Hour_in_Day"] = feb_traffic["End_Time"].str[11:13]
+feb_traffic["Hour_in_Day"] = feb_traffic["End_Time"].str[11:13].astype("int64")
 
 # Hour_in_Day is "time that one hour count period finishes"
-# so want to change "00" to hour "24"
-feb_traffic["Hour_in_Day"] = feb_traffic["Hour_in_Day"].replace(['00'], '24')
+# so want to change "00" to hour "24" of the previous day
+# -1 to recorded day for hour 0
+# and change hour 0 to hour 24
+# will give SettingWithCopyWarning but is fine
+feb_traffic["Day_in_Month"].loc[feb_traffic["Hour_in_Day"] == 0] = \
+    feb_traffic["Day_in_Month"][feb_traffic["Hour_in_Day"] == 0] - 1
+feb_traffic["Hour_in_Day"] = feb_traffic["Hour_in_Day"].replace([0], 24)
+
+# replace day 0 with day 31
+# as measurement at hour 0 of feb 1 is actually hour 24 for 31 jan
+feb_traffic["Day_in_Month"] = feb_traffic["Day_in_Month"].replace([0], 31)
 
 # create replacement dict for day in week
-day_in_week_map = {"06": "04", "13": "04", "20": "04", "27": "04",
-                   "07": "05", "14": "05", "21": "05", "28": "05",
-                   "01": "06", "08": "06", "15": "06", "22": "06", "29": "06",
-                   "02": "07", "09": "07", "16": "07", "23": "07",
-                   "03": "01", "10": "01", "17": "01", "24": "01",
-                   "04": "02", "11": "02", "18": "02", "25": "02",
-                   "05": "03", "12": "03", "19": "03", "26": "03"}
+# 31 refers to 31 jan = friday
+day_in_week_map = {6: 4, 13: 4, 20: 4, 27: 4,
+                   7: 5, 14: 5, 21: 5, 28: 5,
+                   1: 6, 8: 6, 15: 6, 22: 6, 29: 6,
+                   2: 7, 9: 7, 16: 7, 23: 7,
+                   3: 1, 10: 1, 17: 1, 24: 1,
+                   4: 2, 11: 2, 18: 2, 25: 2,
+                   5: 3, 12: 3, 19: 3, 26: 3,
+                   31: 5}
 
 # add variable specifying day of week
 feb_traffic["Day_in_Week"] = feb_traffic["Day_in_Month"].map(day_in_week_map)
 
 # create map to map day in week to weekday or weekend
-weekday_weekend_map = {"01": "WD",
-                       "02": "WD",
-                       "03": "WD",
-                       "04": "WD",
-                       "05": "WD",
-                       "06": "WE",
-                       "07": "WE"}
+weekday_weekend_map = {1: "WD",
+                       2: "WD",
+                       3: "WD",
+                       4: "WD",
+                       5: "WD",
+                       6: "WE",
+                       7: "WE"}
 
 # add variable specifying weekend or weekday
 feb_traffic["Day_Type"] = feb_traffic["Day_in_Week"].map(weekday_weekend_map)

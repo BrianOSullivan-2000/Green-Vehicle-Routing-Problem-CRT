@@ -69,7 +69,8 @@ plt.legend(title="Day in Week")
 wd_feb_traffic = feb_traffic_data[feb_traffic_data["Day_Type"] == "WD"].copy()
 
 # range normalise b/t 1 and 0
-wd_norm_traffic_val = (wd_feb_traffic["Sum_Volume"] - min(wd_feb_traffic["Sum_Volume"])) / (max(wd_feb_traffic["Sum_Volume"]) - min(wd_feb_traffic["Sum_Volume"]))
+wd_norm_traffic_val = (wd_feb_traffic["Sum_Volume"] - min(wd_feb_traffic["Sum_Volume"])) /\
+                      (max(wd_feb_traffic["Sum_Volume"]) - min(wd_feb_traffic["Sum_Volume"]))
 
 wd_feb_traffic["Norm_Vol_WD"] = wd_norm_traffic_val
 
@@ -77,7 +78,8 @@ wd_feb_traffic["Norm_Vol_WD"] = wd_norm_traffic_val
 we_feb_traffic = feb_traffic_data[feb_traffic_data["Day_Type"] == "WE"].copy()
 
 # range normalise b/t 1 and 0
-we_feb_traffic["Norm_Traffic_Val"] = (we_feb_traffic["Sum_Volume"] - min(we_feb_traffic["Sum_Volume"])) / (max(we_feb_traffic["Sum_Volume"]) - min(we_feb_traffic["Sum_Volume"]))
+we_feb_traffic["Norm_Traffic_Val"] = (we_feb_traffic["Sum_Volume"] - min(we_feb_traffic["Sum_Volume"])) /\
+                                     (max(we_feb_traffic["Sum_Volume"]) - min(we_feb_traffic["Sum_Volume"]))
 
 # TODO: update with further stats if needed
 # TODO: make table for report
