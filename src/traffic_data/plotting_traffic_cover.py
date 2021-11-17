@@ -40,16 +40,16 @@ eds_map = gpd.read_file(".\\data\\ireland_eds_map_data\\ireland_eds.shp")
 # filter shape file to just dublin electoral regions
 dub_eds = eds_map[eds_map["CO_NAME"] == "Dublin"]
 
-# plot just scats sites
-fig, ax = plt.subplots(figsize=(10, 10))
-plt.grid(True)
-gplt.pointplot(sites_geodf, hue='Elev', legend=True)
-dub_eds.to_crs(epsg=4326).plot(ax=ax, color="lightgrey")
-gplt.kdeplot(sites_geodf, cmap='Reds', shade=True, clip=dub_eds, ax=ax)
-plt.title("Map of Dublin with SCATS Traffic Measurement Sites Marked")
-sites_geodf.plot(ax=ax, markersize=10,  column="Elev", legend=True)
-plt.xlabel("Longitude")
-plt.ylabel("Latitude")
+# # plot just scats sites
+# fig, ax = plt.subplots(figsize=(10, 10))
+# plt.grid(True)
+# gplt.pointplot(sites_geodf, hue='Elev', legend=True)
+# dub_eds.to_crs(epsg=4326).plot(ax=ax, color="lightgrey")
+# gplt.kdeplot(sites_geodf, cmap='Reds', shade=True, clip=dub_eds, ax=ax)
+# plt.title("Map of Dublin with SCATS Traffic Measurement Sites Marked")
+# sites_geodf.plot(ax=ax, markersize=10,  column="Elev", legend=True)
+# plt.xlabel("Longitude")
+# plt.ylabel("Latitude")
 
 # all traffic data together
 
@@ -62,7 +62,7 @@ plt.ylabel("Latitude")
 wd_9 = full_traffic_data[(full_traffic_data["Day_Type"] == "WD") & (full_traffic_data["Hour_in_Day"] == "09")]
 
 ax = gplt.polyplot(dub_eds, zorder=1, edgecolor="lightgrey")
-gplt.kdeplot(sites_geodf, cmap='Reds', shade=True, shade_lowest=False, clip=dub_eds, ax=ax)
+gplt.kdeplot(sites_geodf, cmap='Reds', shade=True, shade_lowest=False, ax=ax)  # clip=dub_eds
 
 # TODO fix issue with clip
 # TODO wrap into function which takes day and time args
