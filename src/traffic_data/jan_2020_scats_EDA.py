@@ -2,7 +2,7 @@
 # to look at traffic distributions by day and over certain time periods
 # working directory assumed project root
 
-from zipfile import ZipFile
+# from zipfile import ZipFile
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -38,7 +38,7 @@ summary_by_hr_wdwe.groupby("Day_Type")["mean"].plot()
 plt.xlim(0, 25)
 plt.xlabel("Hour in Day")
 plt.ylabel("Mean Vehicle Count")
-plt.title("Mean Vehicle Count by Hour in Day")
+plt.title("January 2020: Mean Vehicle Count by Hour in Day")
 plt.grid(True)
 plt.legend(title="Day Type")
 
@@ -58,7 +58,7 @@ summary_by_hr_d.groupby("Day_in_Week")["mean"].plot()
 plt.xlim(0, 25)
 plt.xlabel("Hour in Day")
 plt.ylabel("Mean Vehicle Count")
-plt.title("Mean Vehicle Count by Hour in Day")
+plt.title("January 2020: Mean Vehicle Count by Hour in Day")
 plt.grid(True)
 plt.legend(title="Day in Week")
 
@@ -67,7 +67,7 @@ plt.legend(title="Day in Week")
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # checkout hypothesis that jan 1-3 are dragging down averages
 with pd.option_context('display.max_rows', None):
-    print(jan_traffic_data[["Sum_Volume", "Hour_in_Day", "Day_in_Month"]][\
+    print(jan_traffic_data[["Sum_Volume", "Hour_in_Day", "Day_in_Month"]][
               jan_traffic_data["Day_in_Week"] == 3].groupby(["Hour_in_Day", "Day_in_Month"]).describe())
 
 # wednesdays
@@ -128,7 +128,8 @@ plt.legend(title="Day in Month")
 wd_jan_traffic = jan_traffic_data[jan_traffic_data["Day_Type"] == "WD"].copy()
 
 # range normalise b/t 1 and 0
-wd_norm_traffic_val = (wd_jan_traffic["Sum_Volume"] - min(wd_jan_traffic["Sum_Volume"])) / (max(wd_jan_traffic["Sum_Volume"]) - min(wd_jan_traffic["Sum_Volume"]))
+wd_norm_traffic_val = (wd_jan_traffic["Sum_Volume"] - min(wd_jan_traffic["Sum_Volume"])) /\
+                      (max(wd_jan_traffic["Sum_Volume"]) - min(wd_jan_traffic["Sum_Volume"]))
 
 wd_jan_traffic["Norm_Vol_WD"] = wd_norm_traffic_val
 
@@ -136,7 +137,8 @@ wd_jan_traffic["Norm_Vol_WD"] = wd_norm_traffic_val
 we_jan_traffic = jan_traffic_data[jan_traffic_data["Day_Type"] == "WE"].copy()
 
 # range normalise b/t 1 and 0
-we_jan_traffic["Norm_Traffic_Val"] = (we_jan_traffic["Sum_Volume"] - min(we_jan_traffic["Sum_Volume"])) / (max(we_jan_traffic["Sum_Volume"]) - min(we_jan_traffic["Sum_Volume"]))
+we_jan_traffic["Norm_Traffic_Val"] = (we_jan_traffic["Sum_Volume"] - min(we_jan_traffic["Sum_Volume"])) /\
+                                     (max(we_jan_traffic["Sum_Volume"]) - min(we_jan_traffic["Sum_Volume"]))
 
 # TODO: update with further stats if needed
 # TODO: make table for report
