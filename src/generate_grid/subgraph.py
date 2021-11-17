@@ -384,6 +384,12 @@ indices = np.arange(np.array(list(con_graph.nodes)).shape[0])
 sample_ids = np.random.choice(indices, 200, replace=False)
 sample_coords = np.array(list(con_graph.nodes))[sample_ids]
 
+coord_list = sample_coords.tolist()
+
+for i in range(len(coord_list)):
+
+    coord_list[i] = tuple(coord_list[i])
+
 # Create empty distance_matrix
 N = len(sample_coords)
 dists = np.zeros((N,N))
@@ -395,6 +401,8 @@ count = 0
 # every node pair combination
 pairs = np.array(list(itertools.combinations(sample_coords, 2)))
 id_pairs = np.array(list(itertools.combinations(sample_ids, 2)))
+
+
 
 # loop through node pairs, find path and path_length for each
 for i in range(len(pairs)):
@@ -425,6 +433,8 @@ for i in range(len(pairs)):
 x = distance_matrix[distance_matrix != 0].values.flatten()
 len(x[~np.isnan(x)]) / len(pairs)
 
+
+distance_matrix.index, distance_matrix.columns = coord_list, coord_list
 
 # Look at how sparse it is
 distance_matrix.to_json("data/distance_matrices/sparse_n200.json")
