@@ -15,13 +15,13 @@ from zipfile import ZipFile
 
 # load raw data
 # NOTE: raw data file too large for github so not uploaded - zip file uploaded instead
-jan_traffic = pd.read_csv(".\\data\\scats_detector_volume_202001.csv")
+jan_traffic_data = pd.read_csv(".\\data\\scats_detector_volume_202001.csv")
 
 # isolate variables of interest
-jan_traffic = jan_traffic[["End_Time", "Site", "Sum_Volume", "Avg_Volume"]]
+jan_traffic_data = jan_traffic_data[["End_Time", "Site", "Sum_Volume"]]
 
 # check for missing data
-jan_traffic.isnull().values.any()  # False
+jan_traffic_data.isnull().values.any()  # False
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # remove invalid sites (which have no location)
@@ -34,28 +34,42 @@ valid_sites = pd.read_pickle(".\\data\\valid_scats_sites.pkl")
 valid_site_ids = valid_sites["SiteID"]
 
 # keep only values from sites with valid ids
-jan_traffic_data = jan_traffic[jan_traffic["Site"].isin(valid_site_ids)]
+jan_traffic_data = jan_traffic_data[jan_traffic_data["Site"].isin(valid_site_ids)]
 
 # ~~~~~~~~~~~~~~~~~~~~~~~
 # process data
 # ~~~~~~~~~~~~~~~~~~~~~~~
 
+# want to combine all detectors from indiv site into one measurement
+# as detectors are not geographically differentiated from e/o
+
+# get sum total of measurements from all detectors per site per time
+# assign to column
+jan_traffic_data["All_Detector_Vol"] = jan_traffic_data.groupby(['End_Time', 'Site'])['Sum_Volume'].transform('sum')
+
+# remove duplicates of site and time combo
+# so left with just total of all detectors for hour at site
+jan_traffic_data = jan_traffic_data.drop_duplicates(subset=['End_Time', 'Site'])
+
+# remove sum_volume column as no longer relevant
+jan_traffic_data = jan_traffic_data.drop(columns="Sum_Volume")
+
 # want to split End_Time into day and hour of day
 # day of month
-jan_traffic["Day_in_Month"] = jan_traffic["End_Time"].str[8:10].astype("int64")
+jan_traffic_data["Day_in_Month"] = jan_traffic_data["End_Time"].str[8:10].astype("int64")
 
 # hour of day
-jan_traffic["Hour_in_Day"] = jan_traffic["End_Time"].str[11:13].astype("int64")
+jan_traffic_data["Hour_in_Day"] = jan_traffic_data["End_Time"].str[11:13].astype("int64")
 
 # Hour_in_Day is "time that one hour count period finishes"
 # so want to change "00" to hour "24" of the previous day
 # -1 to recorded day for hour 0
 # and change hour 0 to hour 24
 # will give SettingWithCopyWarning but is fine
-jan_traffic["Day_in_Month"].loc[jan_traffic["Hour_in_Day"] == 0] = \
-    jan_traffic["Day_in_Month"][jan_traffic["Hour_in_Day"] == 0] - 1
+jan_traffic_data["Day_in_Month"].loc[jan_traffic_data["Hour_in_Day"] == 0] = \
+    jan_traffic_data["Day_in_Month"].loc[jan_traffic_data["Hour_in_Day"] == 0] - 1
 
-jan_traffic["Hour_in_Day"] = jan_traffic["Hour_in_Day"].replace([0], 24)
+jan_traffic_data["Hour_in_Day"] = jan_traffic_data["Hour_in_Day"].replace([0], 24)
 
 # create replacement dict for day in week
 day_in_week_map = {6: 1, 13: 1, 20: 1, 27: 1,
@@ -67,7 +81,7 @@ day_in_week_map = {6: 1, 13: 1, 20: 1, 27: 1,
                    5: 7, 12: 7, 19: 7, 26: 7}
 
 # add variable specifying day of week
-jan_traffic["Day_in_Week"] = jan_traffic["Day_in_Month"].map(day_in_week_map)
+jan_traffic_data["Day_in_Week"] = jan_traffic_data["Day_in_Month"].map(day_in_week_map)
 
 # create map to map day in week to weekday or weekend
 weekday_weekend_map = {1: "WD",
@@ -79,10 +93,10 @@ weekday_weekend_map = {1: "WD",
                        7: "WE"}
 
 # add variable specifying weekend or weekday
-jan_traffic["Day_Type"] = jan_traffic["Day_in_Week"].map(weekday_weekend_map)
+jan_traffic_data["Day_Type"] = jan_traffic_data["Day_in_Week"].map(weekday_weekend_map)
 
 # re-check for NAN
-jan_traffic.isnull().values.any()  # False
+jan_traffic_data.isnull().values.any()  # False
 
 # save to pickle
-jan_traffic.to_pickle(".\\data\\scats_jan2020_processed_data.pkl")
+jan_traffic_data.to_pickle(".\\data\\scats_jan2020_processed_data.pkl")
