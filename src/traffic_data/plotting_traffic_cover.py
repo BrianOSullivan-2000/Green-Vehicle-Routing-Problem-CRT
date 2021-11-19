@@ -20,8 +20,8 @@ jan_traffic_data = jan_traffic_data[~(jan_traffic_data["Day_in_Month"].isin([1, 
 full_traffic_data = pd.concat([jan_traffic_data, feb_traffic_data], ignore_index=True)
 
 # normalise traffic volume data to range [0, 1]
-norm_traffic_val = (full_traffic_data["Sum_Volume"] - min(full_traffic_data["Sum_Volume"])) /\
-                   (max(full_traffic_data["Sum_Volume"]) - min(full_traffic_data["Sum_Volume"]))
+norm_traffic_val = (full_traffic_data["All_Detector_Vol"] - min(full_traffic_data["All_Detector_Vol"])) /\
+                   (max(full_traffic_data["All_Detector_Vol"]) - min(full_traffic_data["All_Detector_Vol"]))
 
 # assign norm-ed col
 full_traffic_data["Norm_Vol_WD"] = norm_traffic_val
