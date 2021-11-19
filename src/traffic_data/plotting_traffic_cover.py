@@ -13,6 +13,9 @@ import geoplot.crs as gcrs
 jan_traffic_data = pd.read_pickle(".\\data\\scats_jan2020_processed_data.pkl")
 feb_traffic_data = pd.read_pickle(".\\data\\scats_feb2020_processed_data.pkl")
 
+# remove abnormal dates from jan
+jan_traffic_data = jan_traffic_data[~(jan_traffic_data["Day_in_Month"].isin([1, 2, 3]))]
+
 # combine into full df
 full_traffic_data = pd.concat([jan_traffic_data, feb_traffic_data], ignore_index=True)
 
