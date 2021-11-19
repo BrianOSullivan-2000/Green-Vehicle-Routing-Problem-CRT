@@ -2,15 +2,8 @@
 # to look at traffic distributions by day and over certain time periods
 # working directory assumed project root
 
-from zipfile import ZipFile
 import pandas as pd
 import matplotlib.pyplot as plt
-
-# # unzip processed scats data for feb 2020
-# # uncomment if needed
-# with ZipFile(".\\data\\scats_feb2020_processed_data.zip", "r") as f:
-#     f.printdir()
-#     f.extractall(".\\data")
 
 # load pickle with processed scats data for feb 2020
 feb_traffic_data = pd.read_pickle(".\\data\\scats_feb2020_processed_data.pkl")
