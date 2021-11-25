@@ -5,6 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import geoplot as gplt
 import geoplot.crs as gcrs
+import numpy as np
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # combine jan and feb data
@@ -30,8 +31,22 @@ full_traffic_data["Norm_Vol_WD"] = norm_traffic_val
 sites_geodf = pd.read_pickle(".\\data\\valid_scats_sites_geom.pkl")
 sites_geodf["SiteID"] = sites_geodf["SiteID"].astype("int64")
 
-# match traffic site geom data to traffic data
 
+# match traffic site elev data to traffic data
+def site_elev(row):
+    return sites_geodf[sites_geodf["SiteID"] == row["Site"]]["Elev"].iloc[0]
+
+
+# match traffic site geom data to traffic data
+def site_geom(row):
+    return sites_geodf[sites_geodf["SiteID"] == row["Site"]]["geometry"].iloc[0]
+
+
+# assign matching elev
+full_traffic_data["Elev"] = full_traffic_data.apply(site_elev, axis=1)
+
+# assign matching geometry
+full_traffic_data["geometry"] = full_traffic_data.apply(site_geom, axis=1)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # mapping set-up
