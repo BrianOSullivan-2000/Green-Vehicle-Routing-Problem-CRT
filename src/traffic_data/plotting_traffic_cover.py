@@ -68,7 +68,7 @@ northings = utm.from_latlon(np.asarray(lats[0:10]), np.asarray(lons[0:10]))[1]
 # make grid
 gridx, gridy = np.meshgrid(eastings, northings)
 
-# test following example from https://numpy.org/doc/stable/reference/generated/numpy.stack.html
+# test following example from https://docs.scipy.org/doc/scipy/reference/reference/generated/scipy.interpolate.RBFInterpolator.html#scipy.interpolate.RBFInterpolator
 obs_raw = np.asarray(utm.from_latlon(np.asarray(lats[0:100]), np.asarray(lons[0:100]))[0:2])
 obs = np.stack((obs_raw[0], obs_raw[1]), axis=1)
 vals = full_traffic_data["All_Detector_Vol"][0:100]
