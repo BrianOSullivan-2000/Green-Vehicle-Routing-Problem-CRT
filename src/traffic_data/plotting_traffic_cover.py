@@ -1,10 +1,10 @@
 # this script plots traffic as a kde on dublin
 
-import geopandas as gpd
+# import geopandas as gpd
 import pandas as pd
 import matplotlib.pyplot as plt
-import geoplot as gplt
-import geoplot.crs as gcrs
+# import geoplot as gplt
+# import geoplot.crs as gcrs
 import numpy as np
 import utm
 import scipy.interpolate as interp
@@ -53,8 +53,8 @@ full_traffic_data["geometry"] = full_traffic_data.apply(site_geom, axis=1)
 
 # attempting interpolation for first 10 entries
 # isolate latitudes and longitudes
-lats = full_traffic_data["geometry"].apply(lambda p: p.y)
-lons = full_traffic_data["geometry"].apply(lambda p: p.x)
+lats = full_traffic_data["geometry"].apply(lambda q: q.y)
+lons = full_traffic_data["geometry"].apply(lambda q: q.x)
 
 # isolate variable of interest
 data = full_traffic_data["All_Detector_Vol"][0:10]
@@ -86,9 +86,7 @@ gridx, gridy = np.meshgrid(eastings, northings)
 # fig.colorbar(p)
 # plt.show()
 
-# TODO do this for means
 # TODO test for sanity
-# TODO try interpolate a value not a plot
 # TODO plot better - dublin map?
 
 # try weekday at 9am
@@ -96,30 +94,28 @@ wd_0900 = full_traffic_data[(full_traffic_data["Day_Type"] == "WD") & (full_traf
 
 # take mean of each site for these
 # throws a SettingWithCopyWarning but is ok
-wd_0900["Mean_Detector_Vol_hr"] = wd_0900.groupby(["Site"])["Norm_Vol_WD"].transform('mean')
+wd_0900["Mean_Detector_Vol_hr"] = wd_0900.groupby(["Site"])["All_Detector_Vol"].transform('mean')
 
 # remove duplicates of sites
 # so left with just mean of each site at this hour and day type
 wd_0900 = wd_0900.drop_duplicates(subset=['Site'])
 
 # drop the normed vol col as now using the mean value
-wd_0900 = wd_0900.drop(columns="Norm_Vol_WD")
+wd_0900 = wd_0900.drop(columns="All_Detector_Vol")
 
 # isolate latitudes and longitudes
-lats = wd_0900["geometry"].apply(lambda p: p.y)
-lons = wd_0900["geometry"].apply(lambda p: p.x)
+lats = wd_0900["geometry"].apply(lambda q: q.y)
+lons = wd_0900["geometry"].apply(lambda q: q.x)
 
-# isolate variable of interest
-data = wd_0900["Mean_Detector_Vol_hr"]
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# THIS IS THE UTM PROJECTION BIT
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # convert to utm coords - eastings
 eastings = utm.from_latlon(np.asarray(lats), np.asarray(lons))[0]
 
 # convert to utm coords - northings
 northings = utm.from_latlon(np.asarray(lats), np.asarray(lons))[1]
-
-# make grid
-gridx, gridy = np.meshgrid(eastings, northings)
 
 obs_raw = np.asarray(utm.from_latlon(np.asarray(lats), np.asarray(lons))[0:2])
 obs = np.stack((obs_raw[0], obs_raw[1]), axis=1)
@@ -130,12 +126,15 @@ min2 = min(obs_raw[1])
 max2 = max(obs_raw[1])
 x_grid = np.mgrid[min1:max1:5j, min2:max2:5j]
 x_flat = x_grid.reshape(2, -1).T  # reshape
-y_flat = interp.RBFInterpolator(obs, vals)(x_flat)  # interpolate the values for that grid
+our_interpolator = interp.RBFInterpolator(obs, vals, neighbors=5, kernel="gaussian", epsilon=1)
+y_flat = our_interpolator(x_flat)  # interpolate the values for that grid
 y_grid = y_flat.reshape(5, 5)  # reshape as wanted
 fig, ax = plt.subplots()
 ax.pcolormesh(*x_grid, y_grid, shading='gouraud')
-p = ax.scatter(*obs.T, c=vals, s=50, ec='k', vmin=-0.25, vmax=0.25)
+p = ax.scatter(*obs.T, c=vals, s=50, ec='k')
 fig.colorbar(p)
+
+our_interpolator([ [ 692899.19445525, 5923903.80728167]])
 
 
 
