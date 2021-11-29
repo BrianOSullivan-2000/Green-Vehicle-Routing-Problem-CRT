@@ -51,7 +51,7 @@ full_traffic_data["Elev"] = full_traffic_data.apply(site_elev, axis=1)
 full_traffic_data["geometry"] = full_traffic_data.apply(site_geom, axis=1)
 
 
-# attempting interpolation
+# attempting interpolation for first 10 entries
 # isolate latitudes and longitudes
 lats = full_traffic_data["geometry"].apply(lambda p: p.y)
 lons = full_traffic_data["geometry"].apply(lambda p: p.x)
@@ -69,9 +69,61 @@ northings = utm.from_latlon(np.asarray(lats[0:10]), np.asarray(lons[0:10]))[1]
 gridx, gridy = np.meshgrid(eastings, northings)
 
 # test following example from https://docs.scipy.org/doc/scipy/reference/reference/generated/scipy.interpolate.RBFInterpolator.html#scipy.interpolate.RBFInterpolator
-obs_raw = np.asarray(utm.from_latlon(np.asarray(lats[0:100]), np.asarray(lons[0:100]))[0:2])
+# obs_raw = np.asarray(utm.from_latlon(np.asarray(lats[0:100]), np.asarray(lons[0:100]))[0:2])
+# obs = np.stack((obs_raw[0], obs_raw[1]), axis=1)
+# vals = full_traffic_data["All_Detector_Vol"][0:100]
+# min1 = min(obs_raw[0])
+# max1 = max(obs_raw[0])
+# min2 = min(obs_raw[1])
+# max2 = max(obs_raw[1])
+# x_grid = np.mgrid[min1:max1:5j, min2:max2:5j]
+# x_flat = x_grid.reshape(2, -1).T  # reshape
+# y_flat = interp.RBFInterpolator(obs, vals)(x_flat)  # interpolate the values for that grid
+# y_grid = y_flat.reshape(5, 5)  # reshape as wanted
+# fig, ax = plt.subplots()
+# ax.pcolormesh(*x_grid, y_grid,shading='gouraud')
+# p = ax.scatter(*obs.T, c=vals, s=50, ec='k', vmin=-0.25, vmax=0.25)
+# fig.colorbar(p)
+# plt.show()
+
+# TODO do this for means
+# TODO test for sanity
+# TODO try interpolate a value not a plot
+# TODO plot better - dublin map?
+
+# try weekday at 9am
+wd_0900 = full_traffic_data[(full_traffic_data["Day_Type"] == "WD") & (full_traffic_data["Hour_in_Day"] == 9)]
+
+# take mean of each site for these
+# throws a SettingWithCopyWarning but is ok
+wd_0900["Mean_Detector_Vol_hr"] = wd_0900.groupby(["Site"])["Norm_Vol_WD"].transform('mean')
+
+# remove duplicates of sites
+# so left with just mean of each site at this hour and day type
+wd_0900 = wd_0900.drop_duplicates(subset=['Site'])
+
+# drop the normed vol col as now using the mean value
+wd_0900 = wd_0900.drop(columns="Norm_Vol_WD")
+
+# isolate latitudes and longitudes
+lats = wd_0900["geometry"].apply(lambda p: p.y)
+lons = wd_0900["geometry"].apply(lambda p: p.x)
+
+# isolate variable of interest
+data = wd_0900["Mean_Detector_Vol_hr"]
+
+# convert to utm coords - eastings
+eastings = utm.from_latlon(np.asarray(lats), np.asarray(lons))[0]
+
+# convert to utm coords - northings
+northings = utm.from_latlon(np.asarray(lats), np.asarray(lons))[1]
+
+# make grid
+gridx, gridy = np.meshgrid(eastings, northings)
+
+obs_raw = np.asarray(utm.from_latlon(np.asarray(lats), np.asarray(lons))[0:2])
 obs = np.stack((obs_raw[0], obs_raw[1]), axis=1)
-vals = full_traffic_data["All_Detector_Vol"][0:100]
+vals = wd_0900["Mean_Detector_Vol_hr"]
 min1 = min(obs_raw[0])
 max1 = max(obs_raw[0])
 min2 = min(obs_raw[1])
@@ -81,21 +133,9 @@ x_flat = x_grid.reshape(2, -1).T  # reshape
 y_flat = interp.RBFInterpolator(obs, vals)(x_flat)  # interpolate the values for that grid
 y_grid = y_flat.reshape(5, 5)  # reshape as wanted
 fig, ax = plt.subplots()
-ax.pcolormesh(*x_grid, y_grid,shading='gouraud')
+ax.pcolormesh(*x_grid, y_grid, shading='gouraud')
 p = ax.scatter(*obs.T, c=vals, s=50, ec='k', vmin=-0.25, vmax=0.25)
 fig.colorbar(p)
-plt.show()
-
-# TODO do this for means
-# TODO test for sanity
-# TODO try interpolate a value not a plot
-# TODO plot better - dublin map?
-
-
-
-
-
-
 
 
 
