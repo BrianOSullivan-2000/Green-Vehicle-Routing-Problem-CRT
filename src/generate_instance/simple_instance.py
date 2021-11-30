@@ -76,6 +76,7 @@ dublin.compute_distance(mode="OSM", filename="data/distance_matrices/sparse_n200
 dublin.compute_gradient()
 dublin.read_driving_cycle("data/WLTP.csv", h=4)
 dublin.compute_speed_profile(filename="data/speed_matrices/sparse_n200.pkl")
+dublin.create_geometries("data/geom_matrices/sparse_n200.pkl")
 dublin.compute_cost()
 
 dublin.cost_matrix

@@ -18,6 +18,8 @@ class Grid():
     along each path and can be computed using either MEET or COPERT methodologies.
     """
 
+
+
     def __init__(self, lon_b, lat_b, h=1, load=True):
         """ Arguments
         lon_b, lat_b - bounding box for latitude and longitude, given as tuples
@@ -47,6 +49,8 @@ class Grid():
         self.points = np.append(self.xx.reshape(-1,1), self.yy.reshape(-1,1), axis=1)
 
 
+
+
     def add_elevation_points(self, data):
         """ Add elevation values to points as described by input data
 
@@ -62,6 +66,8 @@ class Grid():
 
             if np.all(index):
                 self.elevation[index[0][0], index[1][0]] = i[2]
+
+
 
 
     def add_vertices(self, data):
@@ -83,6 +89,8 @@ class Grid():
 
                 self.vertice[index[0][0], index[1][0]] = self.vertice_count
                 self.vertice_count += 1
+
+
 
 
     def create_interpolation(self, data):
@@ -115,6 +123,8 @@ class Grid():
         self.add_elevation_points(data)
 
 
+
+
     def create_df(self):
         """ Create pandas DataFrame with positions, gradient and vertex status
             Needed for later geopandas manipulation, and to determine various
@@ -127,6 +137,19 @@ class Grid():
 
         # Create DataFrame
         self.df = pd.DataFrame(data=data)
+
+
+
+
+    def create_geometries(self, filename):
+        """ Read previously prepared geometries of edges from pickle file
+
+            filename - path to file
+        """
+
+        self.geom_matrix = pd.read_pickle(filename)
+
+
 
 
     def compute_distance(self, mode="Euclidean", filename=None):
@@ -190,6 +213,7 @@ class Grid():
 
 
 
+
     def compute_gradient(self):
         """ Compute gradients between all vertices. Represented as pandas DataFrame
             Gradient defined as Rise/Run in %
@@ -216,6 +240,8 @@ class Grid():
         self.gradient_matrix = self.gradient_matrix.fillna(0)
 
 
+
+
     def read_driving_cycle(self, filename, h):
         """ Read in driving cycle from .csv file. Used to read in WLTP,
             but header is adjustable for potential use of other driving cycles.
@@ -234,6 +260,8 @@ class Grid():
         self.dc_suburban = self.dc_raw[self.dc_raw['Phase']=='Middle']
         self.dc_rural = self.dc_raw[self.dc_raw['Phase']=='High']
         self.dc_highway = self.dc_raw[self.dc_raw['Phase']=='Extra-high']
+
+
 
 
     def compute_speed_profile(self, filename=None):
