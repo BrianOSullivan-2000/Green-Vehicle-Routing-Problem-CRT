@@ -59,7 +59,7 @@ epoints = np.round(ds.to_numpy(), 4)
 # add points to grid
 dublin.add_elevation_points(epoints)
 dublin.add_vertices(vpoints)
-dublin.create_interpolation(epoints)
+#dublin.create_interpolation(epoints)
 
 # create df for grid
 dublin.create_df()
@@ -73,6 +73,7 @@ dublin.create_geometries("data/geom_matrices/sparse_n200.pkl")
 dublin.compute_cost()
 
 dublin.cost_matrix
+
 
 
 # In[1]

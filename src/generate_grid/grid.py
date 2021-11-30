@@ -303,9 +303,12 @@ class Grid():
         # Read previously prepared speed_matrix
         else:
 
+            # Add zero to beginning of velocity options to correctly create bins
+            velocity = list(velocity)
+            velocity.insert(0, 0)
+
             # Create bins using midpoint between average velocities in driving cycles
             bins = [(velocity[i] + velocity[i+1])/2 for i in range(len(velocity)-1)]
-            bins.insert(0, 0)
             bins.append(200)
 
             # Read speed matrix and save dataframe shape, indexes and columns
@@ -322,7 +325,7 @@ class Grid():
 
 
 
-    def compute_cost(self, method="MEET"):
+    def compute_cost(self, method="MEET", idling=True):
         """ Compute CO2 emitted along paths between all vertices using either
             MEET or COPERT methodologies. Represented as pandas DataFrame.
             Model coefficients from MEET or COPERT files previously read.
@@ -373,11 +376,6 @@ class Grid():
                     EF[grad==g] = ((1.27) + (0.0614*g) + (-0.0011*g**2) +
                                    (-0.00235*v) + (-1.33/v)) * EF[grad==g]
 
-            # Find total CO2 emitted rounded to nearest gram, make DataFrame
-            cost = np.round(EF * d)
-            self.cost_matrix = pd.DataFrame(cost,
-                                            index=data[:, 3].astype(int),
-                                            columns=data[:, 3].astype(int))
 
         # Using COPERT model
         elif method.upper() == "COPERT":
@@ -404,15 +402,40 @@ class Grid():
             # Convert to g/km from tables in Ntziachristos COPERT report
             EF = (EF/4.31) * 101 * 3.169
 
-            # Find total CO2 emitted rounded to nearest gram, make DataFrame
-            cost = np.round(EF * d)
 
-            self.cost_matrix = pd.DataFrame(cost,
-                                            index=data[:, 3].astype(int),
-                                            columns=data[:, 3].astype(int))
-
-        # TODO: add FMEFCM idling rates to cost computation
         else:
             print("Choose valid method")
+
+
+        # Find total CO2 emitted over distance
+        cost = EF * d
+
+        # Add idling costs
+        if idling == True:
+
+            # Average velocities from driving cycle
+            velocity = self.dc_net['v_ave without stops (km/h)']
+
+            # Find travel time along each edge without stops in seconds
+            travel_times = (d / velocities) * 3600
+
+            # Percentage of stoppage time according to speeds from driving cycles
+            stop_percentages = [float(p[0:-1]) for p in self.dc_net['p_stop (%)']]
+
+            # For each percentage
+            for i in range(len(velocity)):
+
+                # Compute total time stopped as percentage of total time travelling
+                travel_times[velocities==velocity[i]] = (stop_percentages[i] / 100) * travel_times[velocities==velocity[i]]
+
+            # Add costs from idling (0.4617g/s CO2 emitted while idling)
+            cost = cost + travel_times * 0.4617
+
+
+        # Round to nearest gram, make dataframe
+        cost = np.round(cost)
+        self.cost_matrix = pd.DataFrame(cost,
+                                        index=data[:, 3].astype(int),
+                                        columns=data[:, 3].astype(int))
 
         self.cost_matrix = self.cost_matrix.fillna(0)
