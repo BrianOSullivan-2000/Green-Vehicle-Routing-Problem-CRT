@@ -15,7 +15,7 @@ from shapely.geometry import Polygon
 # Read in our dataframes
 G = nx.read_gpickle("../Brians_Lab/data/dublin_graph.gpickle/dublin_graph.gpickle")
 
-#G = ox.add_edge_speeds(G)
+G = ox.add_edge_speeds(G)
 #G = ox.add_edge_travel_times(G)
 
 
@@ -57,6 +57,7 @@ types
 # Only have network of main roads
 main_roads = types[[2, 3, 5, 6, 8, 9, 10, 11]]
 eds = eds[eds['highway'].isin(main_roads)]
+
 
 GG = momepy.gdf_to_nx(eds, approach='primal')
 
@@ -122,7 +123,11 @@ n2_ids = np.array(n2_ids)
 # speed limit in the final output
 
 eds = eds.drop_duplicates(subset=['node_start', 'node_end'], keep='first')
-eds = eds.loc[:, ['geometry', 'length', 'node_start', 'node_end']]
+
+eds = eds.loc[:, ['maxspeed','geometry', 'length', 'node_start', 'node_end']]
+
+eds = eds[~eds['maxspeed'].isnull().values]
+
 
 # iterative process to remove each n=2 node (have to run this chunk a few times)
 # del_ids are node ids that have already been deleted
@@ -172,6 +177,9 @@ while (truecount < len(n2_ids)) and (loops < 10):
                     newlen = len1 + len2
                     lens.append(newlen)
 
+                    # Find average speed limit
+                    speed = (float(eds2.iloc[0]['maxspeed'])*(len1/newlen) + float(eds2.iloc[1]['maxspeed'])*(len2/newlen))
+
                     # del_idx are the indices of rows in eds that need to be removed
                     del_idx.append(idx[0])
                     del_idx.append(idx[1])
@@ -189,8 +197,8 @@ while (truecount < len(n2_ids)) and (loops < 10):
     loops += 1
 
     # progress tracker
-    if loops % 10 == 0:
-        print(loops // 10)
+    # if loops % 10 == 0:
+        # print(loops // 10)
 
     # only add edge to dataframe if it exists
     if len(lens) != 0:
@@ -202,7 +210,7 @@ while (truecount < len(n2_ids)) and (loops < 10):
             geom = lines
 
         # get data for new row and add to dataframe, drop old edges
-        new_rows = {'length':np.array(lens), 'geometry':geom, 'node_start':np.array(ends)[:, 0], 'node_end':np.array(ends)[:, 1]}
+        new_rows = {'maxspeed':np.array(speed), 'length':np.array(lens), 'geometry':geom, 'node_start':np.array(ends)[:, 0], 'node_end':np.array(ends)[:, 1]}
         ndf = gpd.GeoDataFrame(data=new_rows)
         eds = eds.drop(del_idx)
 
@@ -220,8 +228,8 @@ fig, ax = plt.subplots(1, 1, figsize=(10,10))
 dub_df.plot(ax=ax, color="c", edgecolor="k", alpha=0.4, zorder=2)
 
 # Another graph/gdf reset
-GG = momepy.gdf_to_nx(eds)
-nds, eds = momepy.nx_to_gdf(GG)
+#GG = momepy.gdf_to_nx(eds)
+#nds, eds = momepy.nx_to_gdf(GG)
 
 # Plot edges and nodes
 eds.plot(ax=ax, alpha=0.2, color="k", linewidth=2, zorder=3)
@@ -239,8 +247,8 @@ lat_b = (53.325, 53.365)
 plt.xlim(lon_b)
 plt.ylim(lat_b)
 
-#plt.savefig("data/figures/nodes_cluster.jpeg", dpi=300)
-#print(eds.shape)
+#plt.savefig("data/figures/Dublin_centre_raw.jpeg", dpi=300)
+print(eds.shape)
 plt.show()
 
 
@@ -267,6 +275,7 @@ for i in range(250):
 
     # Find all edges connected to node to be dropped
     drop_eds = eds[(eds['node_start']==nodeIDs[1]) | (eds['node_end']==nodeIDs[1])]
+    drop_eds['maxspeed']
 
     # Find all edges connected to node not to be dropped and corresponding ids
     alt_eds = eds[(eds['node_start']==nodeIDs[0]) | (eds['node_end']==nodeIDs[0])]
@@ -289,6 +298,7 @@ for i in range(250):
     # Also adjust linestrings in similar fashion
     len_list = list(drop_eds['length'])
     geom_list = list(drop_eds['geometry'])
+    speed_list = list(drop_eds['maxspeed'])
 
     # edge index to be dropped
     drop_index = len_list.index(min(len_list))
@@ -296,6 +306,7 @@ for i in range(250):
     # Pop out length and geometry of dropped edge
     add_len = len_list.pop(drop_index)
     add_geom = geom_list.pop(drop_index)
+    add_speed = speed_list.pop(drop_index)
 
     # Add this to kept edges
     len_list = np.array(len_list)[id_keep] + add_len
@@ -311,6 +322,8 @@ for i in range(250):
         newline = ops.linemerge(newline)
         geom_list[g] = newline
 
+    # Adjust speed accordingly
+    speed_list = np.array(speed_list).astype(float)[id_keep] * ((len_list-add_len)/len_list)
 
     # Contract the two nodes (The main step)
     con_graph = nx.contracted_nodes(con_graph, nodes[0], nodes[1], self_loops=False)
@@ -321,11 +334,17 @@ for i in range(250):
     eds = eds.drop_duplicates(subset=["node_start", "node_end"])
 
     # Give all newly generated edges their true length (the sum of removed edge and previous edge) and true geometry
-    eds.loc[((eds['node_start']==nodeIDs[0]) & (eds['node_end'].isin(new_ids))) | ((eds['node_start'].isin(new_ids)) & (eds['node_end']==nodeIDs[0])), 'length'] = len_list
+    eds.loc[((eds['node_start']==nodeIDs[0]) & (eds['node_end'].isin(new_ids)))
+            | ((eds['node_start'].isin(new_ids)) & (eds['node_end']==nodeIDs[0])), 'length'] = len_list
+
+    # Do the same for speed limit
+    eds.loc[((eds['node_start']==nodeIDs[0]) & (eds['node_end'].isin(new_ids)))
+            | ((eds['node_start'].isin(new_ids)) & (eds['node_end']==nodeIDs[0])), 'maxspeed'] = speed_list
 
     # Similarly, give all newly generated edges their true geometries, about 6 errors from disjointed edges
     g_idx = 0
-    for idx in eds.loc[((eds['node_start']==nodeIDs[0]) & (eds['node_end'].isin(new_ids))) | ((eds['node_start'].isin(new_ids)) & (eds['node_end']==nodeIDs[0])), 'geometry'].index:
+    for idx in eds.loc[((eds['node_start']==nodeIDs[0]) & (eds['node_end'].isin(new_ids)))
+                       | ((eds['node_start'].isin(new_ids)) & (eds['node_end']==nodeIDs[0])), 'geometry'].index:
 
         try:
             final_line = geom_list[g_idx]

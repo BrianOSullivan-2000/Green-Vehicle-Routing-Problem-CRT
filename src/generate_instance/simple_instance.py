@@ -36,14 +36,27 @@ ds = pd.read_pickle("data/scats_sites_with_elev.pkl")
 ds = ds.loc[:, "Lat":"Elev"]
 
 # Vertices
-vdf = pd.read_json("data/distance_matrices/n20.json")
+vdf = pd.read_json("data/distance_matrices/sparse_n10.json")
+
 
 # Read osm graph to get coordinates
-G = nx.read_gpickle("../Brians_Lab/data/dublin_graph.gpickle/dublin_graph.gpickle")
-nodes, edges, W = momepy.nx_to_gdf(G, spatial_weights=True)
+#G = nx.read_gpickle("../Brians_Lab/data/dublin_graph.gpickle/dublin_graph.gpickle")
+#nodes, edges, W = momepy.nx_to_gdf(G, spatial_weights=True)
 
-nodes = nodes[nodes["osmid"].isin(vdf.index)]
-vpoints = np.around(nodes.loc[:, 'x':'y'].to_numpy(), 4)
+#nodes = nodes[nodes["osmid"].isin(vdf.index)]
+#vpoints = np.around(nodes.loc[:, 'x':'y'].to_numpy(), 4)
+
+vpoints = list(vdf.columns)
+
+vpoints = [vv.replace("(","") for vv in vpoints]
+vpoints = [vv.replace(")","") for vv in vpoints]
+vpoints = [vv.replace(" ","") for vv in vpoints]
+vpoints = [vv.split(",") for vv in vpoints]
+
+for vv in vpoints:
+    vv[0], vv[1] = float(vv[0]), float(vv[1])
+
+vpoints = np.round(np.array(vpoints), 4)
 
 
 # In[1]
@@ -72,13 +85,13 @@ dublin.create_interpolation(epoints)
 dublin.create_df()
 
 # compute matrices for various edges
-dublin.compute_distance()
+dublin.compute_distance(mode="OSM", filename="data/distance_matrices/sparse_n10.json")
 dublin.compute_gradient()
 dublin.read_driving_cycle("data/WLTP.csv", h=4)
 dublin.compute_speed_profile()
 dublin.compute_cost()
 
-
+dublin.distance_matrix
 dublin.cost_matrix
 
 
@@ -118,7 +131,7 @@ for pair in pairs:
 
 # In[1]
 
-df = dublin.df.iloc[::200, :]
+df = dublin.df.iloc[::500, :]
 
 # Make dataframe
 names = {'Elevation':df['elevation'], 'longitude':df['x'], 'latitude':df['y']}
@@ -140,13 +153,13 @@ gdf_v = gpd.GeoDataFrame(data=pd.DataFrame(vpoints), geometry=geometry_v, crs={'
 
 # Dublin shapefile (NOT IN GITHUB, go to https://www.townlands.ie/page/download/ to access)
 dub_df = gpd.read_file("../Brians_Lab/data/counties.shp")
-dub_plot = gpd.read_file("../Brians_Lab/data/civil_parishes.shp")
+#dub_plot = gpd.read_file("../Brians_Lab/data/civil_parishes.shp")
 # Both GeoDataFrames need to have same projection for plotting
 dub_df = dub_df.set_crs(epsg=4326)
 dub_df = dub_df[dub_df["NAME_TAG"]=="Dublin"]
 
 
-gdf = gdf[geometry.within(dub_df.geometry.unary_union)]
+gdf = gdf[geometry.within(dub_df.geometry.values[0])]
 
 
 # In[1]
@@ -188,18 +201,18 @@ fig, ax = plt.subplots(1, 1, figsize=(10,10))
 
 # Plot elevations
 gdf.plot(ax=ax, column='Elevation', cmap='terrain', vmin = -60, vmax = 200,
-         marker=',', markersize=10, legend=True, alpha=0.7, zorder=1)
+         marker=',', markersize=15, legend=True, alpha=0.7, zorder=1)
 
 # Add county border
 dub_df.plot(ax=ax, color="none", edgecolor="k", alpha=0.5, zorder=2)
 
 
 # Plot road network and paths
-edges2.plot(ax=ax, alpha=0.2, color="k", linewidth=0.5, zorder=3)
-path_edges.plot(ax=ax, color="crimson", linewidth=1.5, zorder=4)
+#edges2.plot(ax=ax, alpha=0.2, color="k", linewidth=0.5, zorder=3)
+#path_edges.plot(ax=ax, color="crimson", linewidth=1.5, zorder=4)
 
 # Plot vertices
-gdf_v.plot(ax=ax, color="k", marker=',', markersize=20, zorder=5)
+#gdf_v.plot(ax=ax, color="k", marker=',', markersize=20, zorder=5)
 
 
 # Bounds for limits
@@ -209,5 +222,6 @@ lat_b = (53.2294, 53.4598)
 # Plot
 plt.xlim(lon_b)
 plt.ylim(lat_b)
-plt.savefig("data/figures/n20.jpeg")
+plt.title("Dublin Elevation (m above sea level)", fontsize=20)
+plt.savefig("data/figures/elevation_map.jpeg", dpi=300)
 plt.show()

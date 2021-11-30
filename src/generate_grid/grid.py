@@ -129,7 +129,7 @@ class Grid():
         self.df = pd.DataFrame(data=data)
 
 
-    def compute_distance(self, mode="Euclidean"):
+    def compute_distance(self, mode="Euclidean", filename=None):
         """ Create distance matrix between all vertices.
             Represented as pandas DataFrame
 
@@ -186,10 +186,10 @@ class Grid():
         elif mode == "OSM":
 
             # Read distance matrix prepper from process_osm.py
-            self.distance_matrix = pd.read_csv("data/distance_matrices/n50.csv")
+            self.distance_matrix = pd.read_json(filename)
 
-            self.distance_matrix = self.distance_matrix.set_index("Unnamed: 0")
-            self.distance_matrix.index.name = None
+            #self.distance_matrix = self.distance_matrix.set_index("Unnamed: 0")
+            #self.distance_matrix.index.name = None
 
 
 
