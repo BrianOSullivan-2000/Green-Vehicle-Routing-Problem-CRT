@@ -27,7 +27,7 @@ lat_b = (53.2294, 53.4598)
 h = 0.0001
 
 # Make the Grid
-dublin = grid.Grid(lon_b=lon_b, lat_b=lat_b, h=h, load=True)
+dublin = grid.Grid(lon_b=lon_b, lat_b=lat_b, h=h)
 
 # Scat site testing data
 ds = pd.read_pickle("data/scats_sites_with_elev.pkl")
@@ -70,9 +70,11 @@ dublin.compute_gradient()
 dublin.read_driving_cycle("data/WLTP.csv", h=4)
 dublin.compute_speed_profile(filename="data/speed_matrices/sparse_n200.pkl")
 dublin.create_geometries("data/geom_matrices/sparse_n200.pkl")
-dublin.compute_cost()
+dublin.compute_cost(method="COPERT with meet")
 
-dublin.cost_matrix
+np.set_printoptions(suppress=True)
+
+dublin.cost_matrix.values.flatten()[dublin.cost_matrix.values.flatten()!=0]
 
 
 

@@ -21,11 +21,11 @@ class Grid():
 
 
 
-    def __init__(self, lon_b, lat_b, h=1, load=True):
+    def __init__(self, lon_b, lat_b, h=1):
         """ Arguments
-        lon_b, lat_b - bounding box for latitude and longitude, given as tuples
-        h - Step size between points of grid
-        load - Boolean, determine if MEET load factor is included or not
+            lon_b, lat_b - bounding box for latitude and longitude, given as tuples
+            h - Step size between points of grid
+            load - Boolean, determine if MEET load factor is included or not
         """
 
         # Base grid defined as self.xx and self.yy
@@ -41,10 +41,7 @@ class Grid():
 
         # Call in coefficients for both methodologies
         self.MEETdf = pd.read_csv("data\MEET_Slope_Correction_Coefficients_Light_Diesel_CO2.csv")
-        self.COPERTdf = pd.read_csv("data\Copert_GVRP_Coefficients.csv").iloc[4:]
-
-        # Load correction factor for MEET model
-        self.load = load
+        self.COPERTdf = pd.read_csv("data\Copert_GVRP_Coefficients.csv")
 
         # Convert grid coordinates to array of (x, y) points
         self.points = np.append(self.xx.reshape(-1,1), self.yy.reshape(-1,1), axis=1)
@@ -165,7 +162,6 @@ class Grid():
             Represented as pandas DataFrame
 
             mode - distance metric used, currently only Euclidean available
-            TODO: add Manhattan and Haversine distance metrics
         """
 
         # Identify all vertices in grid
@@ -239,8 +235,12 @@ class Grid():
         rise = elevs[..., np.newaxis] - elevs[np.newaxis, ...]
         run = self.distance_matrix.to_numpy()
 
+        gf = rise/run
+        gf[gf == (np.inf)] = 0
+        gf[gf == (-1 * (np.inf))] = 0
+
         # Create dataframe of rise/run
-        self.gradient_matrix = pd.DataFrame(rise/run,
+        self.gradient_matrix = pd.DataFrame(gf,
                                             index=data[:, 3].astype(int),
                                             columns=data[:, 3].astype(int))
 
@@ -325,12 +325,14 @@ class Grid():
 
 
 
-    def compute_cost(self, method="MEET", idling=True):
+    def compute_cost(self, method="MEET", idling=True, load=False):
         """ Compute CO2 emitted along paths between all vertices using either
             MEET or COPERT methodologies. Represented as pandas DataFrame.
             Model coefficients from MEET or COPERT files previously read.
 
             method - input method for emissions model
+            idling - option to include FMEFCM idling model
+            load - option to include MEET load correction factor
         """
 
         # Identify all vertices in grid
@@ -358,7 +360,7 @@ class Grid():
             # Slope correction factor coefficients
             cfs = self.MEETdf.loc[:, "A6":"Slope (%)"]
 
-            # Loop through each grad, adjust EF is edge has specified grad
+            # Loop through each grad, adjust EF if edge has specified grad
             for g in grads:
 
                 # Find coefficients according to gradient
@@ -372,7 +374,7 @@ class Grid():
                                cf[3]*v**3 + cf[4]*v**2 + cf[5]*v + cf[6]) * EF[grad==g]
 
                 # Load correction factor
-                if self.load:
+                if load:
                     EF[grad==g] = ((1.27) + (0.0614*g) + (-0.0011*g**2) +
                                    (-0.00235*v) + (-1.33/v)) * EF[grad==g]
 
@@ -380,7 +382,10 @@ class Grid():
         # Using COPERT model
         elif method.upper() == "COPERT":
 
-            # Grad = -6 returns negative EF (TODO: investigate this)
+            # LCVs do not have gradient or load correction options
+            self.COPERTdf = self.COPERTdf.iloc[4:]
+
+            # Grad = -6 returns negative EF
             grad[grad<-4] = -4
             grads = [-4, -2, 0, 2, 4, 6]
             EF = np.empty(d.shape)
@@ -393,7 +398,6 @@ class Grid():
 
                 # Read coefficients according to gradient (assuming 0% capacity)
                 # Currently uses HGV
-                # TODO: Investigate using LCV with MEET grad correction factor
                 cf = self.COPERTdf[(self.COPERTdf['Road.Slope'] == g/100) & (self.COPERTdf['Load'] == 0)].loc[:, "Alpha":"Hta"].values[0, :]
 
                 # Calculate emissions factor (energy consumed in MJ/km)
@@ -401,6 +405,42 @@ class Grid():
 
             # Convert to g/km from tables in Ntziachristos COPERT report
             EF = (EF/4.31) * 101 * 3.169
+
+
+        elif method.upper() == "COPERT WITH MEET":
+
+            # Get coefficients for LCV
+            cf = self.COPERTdf.iloc[3]["Alpha":"Hta"]
+            v = velocities
+
+            # Calculate EF with no corrections
+            EF = (cf[0]*v**2 + cf[1]*v + cf[2] + cf[3]/v) / (cf[4]*v**2 + cf[5]*v + cf[6])
+
+            # Convert to g/km from tables in Ntziachristos COPERT report
+            EF = (EF/4.31) * 101 * 3.169
+
+            # Available gradients in model
+            grads = [-6, -4, -2, 2, 4, 6]
+            # Slope correction factor coefficients
+            cfs = self.MEETdf.loc[:, "A6":"Slope (%)"]
+
+            # Loop through each grad, adjust EF if edge has specified grad
+            for g in grads:
+
+                # Find coefficients according to gradient
+                cf = cfs.loc[cfs.index[cfs["Slope (%)"]==g][0]]
+
+                # Velocities along edges with gradient g
+                v = velocities[grad==g]
+
+                # Adjust edges which correspond to gradient with coefficients
+                EF[grad==g] = (cf[0]*v**6 + cf[1]*v**5 + cf[2]*v**4 +
+                               cf[3]*v**3 + cf[4]*v**2 + cf[5]*v + cf[6]) * EF[grad==g]
+
+                # Load correction factor
+                if load:
+                    EF[grad==g] = ((1.27) + (0.0614*g) + (-0.0011*g**2) +
+                                   (-0.00235*v) + (-1.33/v)) * EF[grad==g]
 
 
         else:
