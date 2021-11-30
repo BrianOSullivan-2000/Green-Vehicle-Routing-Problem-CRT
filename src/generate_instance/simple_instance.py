@@ -11,6 +11,7 @@ import networkx as nx
 import momepy
 import itertools
 import osmnx as ox
+import utm
 
 
 # Bounding box for Dublin
@@ -35,14 +36,6 @@ ds = ds.loc[:, "Lat":"Elev"]
 # Vertices
 vdf = pd.read_pickle("data/distance_matrices/sparse_n200.pkl")
 
-
-# Read osm graph to get coordinates
-#G = nx.read_gpickle("../Brians_Lab/data/dublin_graph.gpickle/dublin_graph.gpickle")
-#nodes, edges, W = momepy.nx_to_gdf(G, spatial_weights=True)
-
-#nodes = nodes[nodes["osmid"].isin(vdf.index)]
-#vpoints = np.around(nodes.loc[:, 'x':'y'].to_numpy(), 4)
-
 vpoints = list(vdf.columns)
 
 
@@ -66,7 +59,7 @@ epoints = np.round(ds.to_numpy(), 4)
 # add points to grid
 dublin.add_elevation_points(epoints)
 dublin.add_vertices(vpoints)
-#dublin.create_interpolation(epoints)
+dublin.create_interpolation(epoints)
 
 # create df for grid
 dublin.create_df()
@@ -82,7 +75,6 @@ dublin.compute_cost()
 dublin.cost_matrix
 
 
-
 # In[1]
 
 import src.generate_tsplib.generate_tsplib as tsp
@@ -92,29 +84,8 @@ nodes = nodes[:, 0:2]
 edge_weights = dublin.cost_matrix.to_numpy()
 
 
-tsp.generate_tsplib(filename="instances/sample_n20", instance_name="instance", capacity=100, edge_weight_type="EXPLICIT", edge_weight_format="FULL_MATRIX",
+tsp.generate_tsplib(filename="instances/sample_n200", instance_name="instance", capacity=100, edge_weight_type="EXPLICIT", edge_weight_format="FULL_MATRIX",
                     nodes=nodes, demand=np.ones(len(nodes)), depot_index=[0], edge_weights=edge_weights)
-
-
-# In[1]
-
-
-sample_ids = vdf.index
-# every node pair combination
-pairs = np.array(list(itertools.combinations(sample_ids, 2)))
-
-paths = []
-count = 0
-
-for pair in pairs:
-
-    # get path length, add to matrix, count
-    paths.append(nx.shortest_path(G, pair[0], pair[1], weight="length"))
-    count += 1
-
-    # impromptu progress bar
-    if count % 5 == 0:
-        print(count // 5)
 
 
 # In[1]
@@ -133,11 +104,9 @@ gdf = gpd.GeoDataFrame(map_df, columns=['Elevation'], geometry=geometry, crs={'i
 gdf = gdf.set_crs(epsg=4326, allow_override=True)
 
 
-# In[1]
-
-
 geometry_v = gpd.points_from_xy(vpoints[:, 0], vpoints[:, 1])
 gdf_v = gpd.GeoDataFrame(data=pd.DataFrame(vpoints), geometry=geometry_v, crs={'init' : 'epsg:4326'})
+gdf_v = gdf_v.set_crs(epsg=4326, allow_override=True)
 
 # Dublin shapefile (NOT IN GITHUB, go to https://www.townlands.ie/page/download/ to access)
 dub_df = gpd.read_file("../Brians_Lab/data/counties.shp")
@@ -146,46 +115,12 @@ dub_df = gpd.read_file("../Brians_Lab/data/counties.shp")
 dub_df = dub_df.set_crs(epsg=4326)
 dub_df = dub_df[dub_df["NAME_TAG"]=="Dublin"]
 
-
 gdf = gdf[geometry.within(dub_df.geometry.values[0])]
 
-
 # In[1]
 
-# Prepare paths for plotting
-steps = []
-
-# Add each step
-for path in paths:
-    for i in range(len(path)-1):
-        steps.append([path[i], path[i+1]])
-
-# Find corresponding edge for each node pair
-steps = np.array(steps)
-path_edges = edges[(edges['u'].isin(steps[: ,0])) & (edges['v'].isin(steps[: ,1]))]
-
-
-# In[1]
-
-# Clean road network data
-edges2 = edges
-
-# Speed limits and road types
-speeds = ["50", "30", "80", "60", "40", "100", "120", "20"]
-types = np.unique(edges['highway'].values)
-types = types[[4,5,7,8,9,10,11,12,14,15]]
-
-# Pandas filtering
-edges2 = edges2[edges2['maxspeed'].isin(speeds)]
-edges2 = edges2[edges2['highway'].isin(types)]
-
-
-# In[1]
 
 fig, ax = plt.subplots(1, 1, figsize=(10,10))
-
-#ox.plot_graph_routes(G, paths, ax=ax, bgcolor='#ffffff', edgecolor="#111111", edge_alpha=0.5,
-#                     node_alpha=0, show=False, ig_dest_size=5, route_linewidth=2, node_size=0)
 
 # Plot elevations
 gdf.plot(ax=ax, column='Elevation', cmap='terrain', vmin = -60, vmax = 200,
@@ -195,12 +130,8 @@ gdf.plot(ax=ax, column='Elevation', cmap='terrain', vmin = -60, vmax = 200,
 dub_df.plot(ax=ax, color="none", edgecolor="k", alpha=0.5, zorder=2)
 
 
-# Plot road network and paths
-#edges2.plot(ax=ax, alpha=0.2, color="k", linewidth=0.5, zorder=3)
-#path_edges.plot(ax=ax, color="crimson", linewidth=1.5, zorder=4)
-
 # Plot vertices
-#gdf_v.plot(ax=ax, color="k", marker=',', markersize=20, zorder=5)
+gdf_v.plot(ax=ax, color="k", marker=',', markersize=1, zorder=5)
 
 
 # Bounds for limits
@@ -210,6 +141,5 @@ lat_b = (53.2294, 53.4598)
 # Plot
 plt.xlim(lon_b)
 plt.ylim(lat_b)
-plt.title("Dublin Elevation (m above sea level)", fontsize=20)
-plt.savefig("data/figures/elevation_map.jpeg", dpi=300)
+
 plt.show()

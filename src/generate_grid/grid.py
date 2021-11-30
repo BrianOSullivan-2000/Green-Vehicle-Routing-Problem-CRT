@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import scipy as sc
 from scipy.spatial import cKDTree, distance_matrix
 import math
+import utm
 
 
 class Grid():
@@ -100,14 +101,21 @@ class Grid():
         data - numpy array of points, points have shape (x, y, elevation)
         """
 
-        # TODO: Interpolation doesn't have correct lat/lon projection
+        # Get lats and lons and convert to grid with utm projection
+        lons, lats = data[:, 0], data[:, 1]
+
+        # Convert both input points and gridpoints to correct grid using UTM projection
+        obs_raw = np.asarray(utm.from_latlon(np.asarray(lons), np.asarray(lats))[0:2])
+        obs = np.stack((obs_raw[0], obs_raw[1]), axis=1)
+        grid_obs_raw = np.asarray(utm.from_latlon(self.xx.ravel(), self.yy.ravel())[0:2])
+        grid_obs = np.stack((grid_obs_raw[0], grid_obs_raw[1]), axis=1)
 
         # Object for querying nearest points
-        tree = sc.spatial.cKDTree(data[:, 0:2])
+        tree = sc.spatial.cKDTree(np.array(obs))
 
         # Each point in grid determines k=10 nearest points from input data
         # d is separation distances and inds are indexes of corresponding points
-        d, inds = tree.query(np.c_[self.xx.ravel(), self.yy.ravel()], k=10)
+        d, inds = tree.query(np.array(grid_obs), k=10)
 
         # Calculate IDW2 weights
         w = 1.0 / d**2
