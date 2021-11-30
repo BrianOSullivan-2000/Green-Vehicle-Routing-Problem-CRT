@@ -216,9 +216,6 @@ while (truecount < len(n2_ids)) and (loops < 10):
 
         eds = eds.append(ndf, ignore_index=True)
 
-    #else:
-        #break
-
 
 
 # Let's plot the results
@@ -228,8 +225,8 @@ fig, ax = plt.subplots(1, 1, figsize=(10,10))
 dub_df.plot(ax=ax, color="c", edgecolor="k", alpha=0.4, zorder=2)
 
 # Another graph/gdf reset
-#GG = momepy.gdf_to_nx(eds)
-#nds, eds = momepy.nx_to_gdf(GG)
+GG = momepy.gdf_to_nx(eds)
+nds, eds = momepy.nx_to_gdf(GG)
 
 # Plot edges and nodes
 eds.plot(ax=ax, alpha=0.2, color="k", linewidth=2, zorder=3)
@@ -396,6 +393,10 @@ plt.show()
 
 # In[1]
 
+# Add coordinates to eds
+eds['start_coord'] = np.array(con_graph.edges)[:, 0]
+eds['end_coord'] = np.array(con_graph.edges)[:, 1]
+
 # Finally, calculate the distance matrix
 indices = np.arange(np.array(list(con_graph.nodes)).shape[0])
 
@@ -413,6 +414,7 @@ for i in range(len(coord_list)):
 N = len(sample_coords)
 dists = np.zeros((N,N))
 distance_matrix = pd.DataFrame(data=dists, index=sample_ids, columns=sample_ids)
+speed_matrix =  distance_matrix.copy()
 
 # count for tracking
 count = 0
@@ -420,7 +422,6 @@ count = 0
 # every node pair combination
 pairs = np.array(list(itertools.combinations(sample_coords, 2)))
 id_pairs = np.array(list(itertools.combinations(sample_ids, 2)))
-
 
 
 # loop through node pairs, find path and path_length for each
@@ -441,6 +442,15 @@ for i in range(len(pairs)):
         path_length = nx.shortest_path_length(con_graph, tuple(pair[0]), tuple(pair[1]), weight='length')
         distance_matrix.loc[id_pair[0], id_pair[1]] = path_length
 
+        speeds = []
+        for i in range(len(path) - 1):
+
+            speeds.append(float(eds[((eds['start_coord']==tuple(path[i])) | (eds['end_coord']==tuple(path[i]))) &
+                         ((eds['start_coord']==tuple(path[i + 1])) | (eds['end_coord']==tuple(path[i + 1])))]['maxspeed'].values[0]))
+
+
+        avg_speed = np.sum(np.array(speeds)) / (len(path) - 1)
+        speed_matrix.loc[id_pair[0], id_pair[1]] = avg_speed
 
     # impromptu progress bar
     count += 1
@@ -454,7 +464,9 @@ len(x[~np.isnan(x)]) / len(pairs)
 
 
 distance_matrix.index, distance_matrix.columns = coord_list, coord_list
+speed_matrix.index, speed_matrix.columns = coord_list, coord_list
 
 # Look at how sparse it is
 distance_matrix.to_json("data/distance_matrices/sparse_n200.json")
+speed_matrix.to_json("data/speed_matrices/sparse_n200.json")
 distance_matrix
