@@ -33,7 +33,7 @@ ds = pd.read_pickle("data/scats_sites_with_elev.pkl")
 ds = ds.loc[:, "Lat":"Elev"]
 
 # Vertices
-vdf = pd.read_json("data/distance_matrices/sparse_n200.json")
+vdf = pd.read_pickle("data/distance_matrices/sparse_n200.pkl")
 
 
 # Read osm graph to get coordinates
@@ -45,16 +45,8 @@ vdf = pd.read_json("data/distance_matrices/sparse_n200.json")
 
 vpoints = list(vdf.columns)
 
-vpoints = [vv.replace("(","") for vv in vpoints]
-vpoints = [vv.replace(")","") for vv in vpoints]
-vpoints = [vv.replace(" ","") for vv in vpoints]
-vpoints = [vv.split(",") for vv in vpoints]
-
-for vv in vpoints:
-    vv[0], vv[1] = float(vv[0]), float(vv[1])
 
 vpoints = np.round(np.array(vpoints), 4)
-
 
 
 # Clean data up a little
@@ -80,14 +72,13 @@ dublin.add_vertices(vpoints)
 dublin.create_df()
 
 # compute matrices for various edges
-dublin.compute_distance(mode="OSM", filename="data/distance_matrices/sparse_n200.json")
+dublin.compute_distance(mode="OSM", filename="data/distance_matrices/sparse_n200.pkl")
 dublin.compute_gradient()
 dublin.read_driving_cycle("data/WLTP.csv", h=4)
-dublin.compute_speed_profile(filename="data/speed_matrices/sparse_n200.json")
+dublin.compute_speed_profile(filename="data/speed_matrices/sparse_n200.pkl")
 dublin.compute_cost()
 
 dublin.cost_matrix
-
 
 
 

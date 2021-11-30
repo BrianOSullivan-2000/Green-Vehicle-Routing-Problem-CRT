@@ -186,10 +186,7 @@ class Grid():
         elif mode == "OSM":
 
             # Read distance matrix prepper from process_osm.py
-            self.distance_matrix = pd.read_json(filename)
-
-            #self.distance_matrix = self.distance_matrix.set_index("Unnamed: 0")
-            #self.distance_matrix.index.name = None
+            self.distance_matrix = pd.read_pickle(filename)
 
 
 
@@ -276,7 +273,7 @@ class Grid():
             bins.append(200)
 
             # Read speed matrix and save dataframe shape, indexes and columns
-            self.velocity_matrix = pd.read_json(filename)
+            self.velocity_matrix = pd.read_pickle(filename)
             indices, columns = self.velocity_matrix.index, self.velocity_matrix.columns
             v_shape = self.velocity_matrix.shape
 

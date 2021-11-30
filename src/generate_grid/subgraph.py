@@ -166,6 +166,7 @@ while (truecount < len(n2_ids)) and (loops < 10):
                     n2_neighbours[count] = nodes
                     ends.append(nodes)
 
+
                     # Combine the geometries of both edges
                     line_1, line_2 = eds2.iloc[0]['geometry'], eds2.iloc[1]['geometry']
                     newline = geometry.MultiLineString([line_1, line_2])
@@ -401,13 +402,14 @@ eds['end_coord'] = np.array(con_graph.edges)[:, 1]
 indices = np.arange(np.array(list(con_graph.nodes)).shape[0])
 
 # Pick random IDs and get their coordinates (for networkx)
-sample_ids = np.random.choice(indices, 200, replace=False)
+sample_ids = np.random.choice(indices, 10, replace=False)
 sample_coords = np.array(list(con_graph.nodes))[sample_ids]
 
+
+# Formatting cordinates for dataframe columns and indexes later
 coord_list = sample_coords.tolist()
 
 for i in range(len(coord_list)):
-
     coord_list[i] = tuple(coord_list[i])
 
 # Create empty distance_matrix and speed_matrix
@@ -415,6 +417,7 @@ N = len(sample_coords)
 dists = np.zeros((N,N))
 distance_matrix = pd.DataFrame(data=dists, index=sample_ids, columns=sample_ids)
 speed_matrix =  distance_matrix.copy()
+geom_matrix = distance_matrix.copy()
 
 # count for tracking
 count = 0
@@ -453,6 +456,22 @@ for i in range(len(pairs)):
         avg_speed = np.sum(np.array(speeds)) / (len(path) - 1)
         speed_matrix.loc[id_pair[0], id_pair[1]] = avg_speed
 
+
+        # Similar idea for geometries, combine all edge geometries together into one
+        geoms = []
+        for i in range(len(path) - 1):
+
+            geoms.append(eds[((eds['start_coord']==tuple(path[i])) | (eds['end_coord']==tuple(path[i]))) &
+                        ((eds['start_coord']==tuple(path[i+1])) | (eds['end_coord']==tuple(path[i+1])))]['geometry'].values[0])
+
+        newline = geometry.MultiLineString(geoms)
+        newline = ops.linemerge(newline)
+        geom_matrix.loc[id_pair[0], id_pair[1]] = newline
+
+
+
+
+
     # impromptu progress bar
     count += 1
     if count % 1000 == 0:
@@ -469,6 +488,6 @@ distance_matrix.index, distance_matrix.columns = coord_list, coord_list
 speed_matrix.index, speed_matrix.columns = coord_list, coord_list
 
 # Look at how sparse it is
-distance_matrix.to_json("data/distance_matrices/sparse_n200.json")
-speed_matrix.to_json("data/speed_matrices/sparse_n200.json")
-distance_matrix
+#distance_matrix.to_pickle("data/distance_matrices/sparse_n10.pkl")
+#speed_matrix.to_pickle("data/speed_matrices/sparse_n10.pkl")
+#geom_matrix.to_pickle("data/geom_matrices/sparse_n10.pkl")
