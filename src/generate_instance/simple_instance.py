@@ -12,6 +12,8 @@ import momepy
 import itertools
 import osmnx as ox
 import utm
+from src.elevation_call.create_evel_query_file import create_elev_query_file
+from src.elevation_call.read_elev_query_result import read_elev_res
 
 
 # Bounding box for Dublin
@@ -35,11 +37,15 @@ ds = ds.loc[:, "Lat":"Elev"]
 
 # Vertices
 vdf = pd.read_pickle("data/distance_matrices/sparse_n200.pkl")
-
 vpoints = list(vdf.columns)
 
-
 vpoints = np.round(np.array(vpoints), 4)
+
+
+# We can get the elevations directly from open elevation instead of interpolating (TODO: ask others how to do this)
+vdf = pd.DataFrame(vpoints, columns=['longitude', 'latitude'])
+vdf.to_pickle("data/instance_elevs/n200/n200_lat_long.pkl")
+create_elev_query_file("data/instance_elevs/n200/n200_lat_long.pkl", "data/instance_elevs/n200/n200_to_query.json")
 
 
 # Clean data up a little
