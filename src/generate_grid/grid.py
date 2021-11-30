@@ -239,31 +239,54 @@ class Grid():
         self.dc_highway = self.dc_raw[self.dc_raw['Phase']=='Extra-high']
 
 
-    def compute_speed_profile(self):
+    def compute_speed_profile(self, filename=None):
         """ Compute average velocity along paths between all vertices.
             Represented as pandas DataFrame. Average velocity currently accessed
             from driving cycle according to distance along path.
         """
 
         # Average velocities from driving cycle
-        velocity = self.dc_net['v_ave with stops (km/h)']
+        velocity = self.dc_net['v_ave without stops (km/h)']
 
-        # Separations and speed_matrix
-        dists = self.distance_matrix.to_numpy()
-        speeds = np.empty(dists.shape)
+        if filename==None:
 
-        # Assuming average speed by separation of vertices
-        # Final values from WLTP Driving Cycle
-        speeds[(dists < 10000) & (dists > 1)] = velocity[0]
-        speeds[(dists < 20000) & (dists > 10000)] = velocity[1]
-        speeds[(dists < 50000) & (dists > 20000)] = velocity[2]
-        speeds[(dists > 50000)] = velocity[3]
+            # Separations and speed_matrix
+            dists = self.distance_matrix.to_numpy()
+            speeds = np.empty(dists.shape)
 
-        # Need indices of vertices for labelling
-        data = self.df[self.df['is_vertice'] != 0].values[:, 3].astype(int)
+            # Assuming average speed by separation of vertices
+            # Final values from WLTP Driving Cycle
+            speeds[(dists < 10000) & (dists > 1)] = velocity[0]
+            speeds[(dists < 20000) & (dists > 10000)] = velocity[1]
+            speeds[(dists < 50000) & (dists > 20000)] = velocity[2]
+            speeds[(dists > 50000)] = velocity[3]
 
-        # Create dataframe
-        self.velocity_matrix = pd.DataFrame(speeds, index=data, columns=data)
+            # Need indices of vertices for labelling
+            data = self.df[self.df['is_vertice'] != 0].values[:, 3].astype(int)
+
+            # Create dataframe
+            self.velocity_matrix = pd.DataFrame(speeds, index=data, columns=data)
+
+        # Read previously prepared speed_matrix
+        else:
+
+            # Create bins using midpoint between average velocities in driving cycles
+            bins = [(velocity[i] + velocity[i+1])/2 for i in range(len(velocity)-1)]
+            bins.insert(0, 0)
+            bins.append(200)
+
+            # Read speed matrix and save dataframe shape, indexes and columns
+            self.velocity_matrix = pd.read_json(filename)
+            indices, columns = self.velocity_matrix.index, self.velocity_matrix.columns
+            v_shape = self.velocity_matrix.shape
+
+            # Bin the velocity matrix according to driving cycle speeds
+            v_binned = np.array([velocity[idx] for idx in np.digitize(self.velocity_matrix.values.flatten(), bins)])
+
+            # Convert back to original shape and save
+            v_binned = v_binned.reshape(v_shape)
+            self.velocity_matrix = pd.DataFrame(v_binned, index=indices, columns=columns)
+
 
 
     def compute_cost(self, method="MEET"):

@@ -13,9 +13,6 @@ import itertools
 import osmnx as ox
 
 
-# In[1]
-
-
 # Bounding box for Dublin
 lon_b = (-6.475924, -6.084280)
 lat_b = (53.229386, 53.459765)
@@ -36,7 +33,7 @@ ds = pd.read_pickle("data/scats_sites_with_elev.pkl")
 ds = ds.loc[:, "Lat":"Elev"]
 
 # Vertices
-vdf = pd.read_json("data/distance_matrices/sparse_n10.json")
+vdf = pd.read_json("data/distance_matrices/sparse_n200.json")
 
 
 # Read osm graph to get coordinates
@@ -59,8 +56,6 @@ for vv in vpoints:
 vpoints = np.round(np.array(vpoints), 4)
 
 
-# In[1]
-
 
 # Clean data up a little
 ds = ds.drop(ds[ds['Long']==0].index)
@@ -75,24 +70,25 @@ ds = ds[["Long", "Lat", "Elev"]]
 # round values to grid values
 # TODO: investigate if ok
 epoints = np.round(ds.to_numpy(), 4)
-epoints
+
 # add points to grid
 dublin.add_elevation_points(epoints)
 dublin.add_vertices(vpoints)
-dublin.create_interpolation(epoints)
+#dublin.create_interpolation(epoints)
 
 # create df for grid
 dublin.create_df()
 
 # compute matrices for various edges
-dublin.compute_distance(mode="OSM", filename="data/distance_matrices/sparse_n10.json")
+dublin.compute_distance(mode="OSM", filename="data/distance_matrices/sparse_n200.json")
 dublin.compute_gradient()
 dublin.read_driving_cycle("data/WLTP.csv", h=4)
-dublin.compute_speed_profile()
+dublin.compute_speed_profile(filename="data/speed_matrices/sparse_n200.json")
 dublin.compute_cost()
 
-dublin.distance_matrix
 dublin.cost_matrix
+
+
 
 
 # In[1]
