@@ -402,7 +402,7 @@ eds['end_coord'] = np.array(con_graph.edges)[:, 1]
 indices = np.arange(np.array(list(con_graph.nodes)).shape[0])
 
 # Pick random IDs and get their coordinates (for networkx)
-sample_ids = np.random.choice(indices, 10, replace=False)
+sample_ids = np.random.choice(indices, 200, replace=False)
 sample_coords = np.array(list(con_graph.nodes))[sample_ids]
 
 
@@ -483,11 +483,21 @@ x = distance_matrix[distance_matrix != 0].values.flatten()
 len(x[~np.isnan(x)]) / len(pairs)
 
 
+# Need directionality in the matrices, just add tranposes to bottom triangle
+distance_matrix = distance_matrix + distance_matrix.T
+speed_matrix = speed_matrix + speed_matrix.T
+
+for i in range(geom_matrix.shape[0]):
+    for j in range(i, geom_matrix.shape[1]):
+        geom_matrix.iloc[j, i] = geom_matrix.iloc[i, j]
+
+
 # Add cordinates as columns and indices
 distance_matrix.index, distance_matrix.columns = coord_list, coord_list
 speed_matrix.index, speed_matrix.columns = coord_list, coord_list
+geom_matrix.index, geom_matrix.columns = coord_list, coord_list
 
 # Look at how sparse it is
-#distance_matrix.to_pickle("data/distance_matrices/sparse_n10.pkl")
-#speed_matrix.to_pickle("data/speed_matrices/sparse_n10.pkl")
-#geom_matrix.to_pickle("data/geom_matrices/sparse_n10.pkl")
+distance_matrix.to_pickle("data/distance_matrices/sparse_n200.pkl")
+speed_matrix.to_pickle("data/speed_matrices/sparse_n200.pkl")
+geom_matrix.to_pickle("data/geom_matrices/sparse_n200.pkl")
