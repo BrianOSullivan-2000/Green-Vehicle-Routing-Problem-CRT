@@ -249,6 +249,108 @@ class Grid():
 
 
 
+    def read_weather(self, filename, h=0.005):
+        """ Read in weather data as GeoDataFrame of points. A low-resolution grid
+            is interpolated over the region of interest for the weather data.
+            Evenly spaced rectangles are computed about each point with the
+            weather variables assigned. (Currently only total precipitation)
+
+            filename - path to weather data, rainfall units assumed as m/hour
+                       with label 'tp' (Total Precipitation),
+                       coordinate columns assumed "longitude" and "latitude",
+                       file type is pickle (.pkl)
+
+            h - step size of grid to interpolate
+        """
+
+        # Import Polygon function for rectangles
+        from shapely.geometry import Polygon
+
+        # Read in file and convert to mm
+        self.weather = pd.read_pickle(filename)
+        self.weather.loc[:, 'tp'] = self.weather.loc[:, 'tp'] * 1000
+
+        lons, lats, prec = self.weather['longitude'], self.weather['latitude'], self.weather['tp']
+
+        # Create gridpoints for interpolation array
+        x, y = np.arange(self.x[0], self.x[-1], h), np.arange(self.y[0], self.y[-1], h)
+        yy, xx = np.meshgrid(y, x)
+
+        # Convert both input points and gridpoints to grid using UTM projection
+        obs_raw = np.asarray(utm.from_latlon(np.asarray(lons), np.asarray(lats))[0:2])
+        obs = np.stack((obs_raw[0], obs_raw[1]), axis=1)
+        grid_obs_raw = np.asarray(utm.from_latlon(xx.ravel(), yy.ravel())[0:2])
+        grid_obs = np.stack((grid_obs_raw[0], grid_obs_raw[1]), axis=1)
+
+        # IDW2 interpolation
+        tree = cKDTree(np.array(obs))
+
+        # Get distances, indices, compute weights, find final weighted averages
+        d, inds = tree.query(np.array(grid_obs), k=7)
+        w = 1.0 / d**2
+        weighted_averages = np.sum(w * prec.values[inds], axis=1) / np.sum(w, axis=1)
+
+        # Total precipitation array
+        tp = np.reshape(weighted_averages, (len(x), len(y)))
+
+        # Geometry of interpolated array as points, then gather data
+        geometry = gpd.points_from_xy(xx.flatten(), yy.flatten())
+        names = {'Precipitation':tp.flatten(), 'longitude':xx.flatten(), 'latitude':yy.flatten()}
+
+        # Finally, interpolated array is converted to GeoDataFrame
+        gdf = gpd.GeoDataFrame(pd.DataFrame(data=names), columns=['Precipitation'],
+                                 geometry=geometry, crs={'init' : 'epsg:4326'})
+
+
+        # Find midpoints between all gridpoints of GeoDataFrame (These are the rectangle corners)
+        x_mid, y_mid = np.arange(x[0] - (h/2), x[-1] + 2*(h/2), h), np.arange(y[0] - (h/2), y[-1] + 2*(h/2), h)
+
+        # Starting points and trackers for loops
+        x0, y0 = x_mid[0], y_mid[0]
+        x_step, y_step = x0, y0
+
+        # List of rectangles
+        recs = []
+
+        # Loop over longitude
+        for i in range(len(x)):
+            # Reset latitude for each new longitude
+            y_step = y0
+
+            # Loop over latitude
+            for j in range(len(y)):
+                # Get all four corners of rectangle surrounding point
+                recs.append([(x_step, y_step), (x_step+h, y_step), (x_step+h, y_step+h), (x_step, y_step+h)])
+
+                # Move on to next rectangle by step size
+                y_step += h
+            x_step += h
+
+
+        # Set rectangles as new geometry for GeoDataFrame
+        grid_geom = pd.Series(recs).apply(lambda x: Polygon(x))
+        gdf['geometry'] = grid_geom
+
+
+        # Bin values according to rainfall ranges
+        # Two different options, m50 study by De Courcy et al
+        # or London study by Tsapakis et al
+        #m50_bins = np.array((0, 0.0005, 0.5, 4, 50))
+        london_bins = np.array((0, 0.0005, 0.2, 6, 50))
+
+        #m50_vals = np.array((1, 1-0.025, 1-0.053, 1-0.155))
+        london_vals = np.array((1, 1-0.021, 1-0.038, 1-0.06))
+
+        # Going with london metrics for now
+        gdf['Rain_Correction'] = np.digitize(gdf['Precipitation'], london_bins)
+        gdf['Rain_Correction'] = np.array([london_vals[idx] for idx in gdf['Rain_Correction']])
+
+        # Final output of GeoDataFrame
+        self.weather = gdf
+
+
+
+
     def read_driving_cycle(self, filename, h):
         """ Read in driving cycle from .csv file. Used to read in WLTP,
             but header is adjustable for potential use of other driving cycles.

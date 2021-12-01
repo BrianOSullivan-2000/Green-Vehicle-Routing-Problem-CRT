@@ -75,6 +75,7 @@ dublin.compute_gradient()
 dublin.read_driving_cycle("data/WLTP.csv", h=4)
 dublin.compute_speed_profile(filename="data/speed_matrices/sparse_n20.pkl")
 dublin.create_geometries("data/geom_matrices/sparse_n20.pkl")
+dublin.read_weather(filename="data/weather_matrices/2016-01-28_4pm.pkl")
 dublin.compute_cost(method="COPERT with meet")
 
 np.set_printoptions(suppress=True)
@@ -131,9 +132,12 @@ dub_df = dub_df[dub_df["NAME_TAG"]=="Dublin"]
 fig, ax = plt.subplots(1, 1, figsize=(10,10))
 
 # Plot elevations
-gdf.plot(ax=ax, column='Elevation', cmap='terrain', vmin = -60, vmax = 200,
-         marker=',', markersize=15, legend=True, alpha=0.7, zorder=1)
+#gdf.plot(ax=ax, column='Elevation', cmap='terrain', vmin = -60, vmax = 200,
+#         marker=',', markersize=15, legend=True, alpha=0.7, zorder=1)
 
+# Plot rainfall
+dublin.weather.plot(ax=ax, column='Precipitation', cmap='Blues', legend=True,
+            vmin=0, vmax=np.max(dublin.weather['Precipitation']))
 # Add county border
 dub_df.plot(ax=ax, color="none", edgecolor="k", alpha=0.5, zorder=2)
 
@@ -143,14 +147,14 @@ gdf_v.plot(ax=ax, color="k", marker=',', markersize=1, zorder=5)
 
 
 # Bounds for limits
-lon_b = (-6.4759, -6.0843)
-lat_b = (53.2294, 53.4598)
+#lon_b = (-6.4759, -6.0843)
+#lat_b = (53.2294, 53.4598)
 
-lon_b = (-6.32, -6.21)
-lat_b = (53.325, 53.365)
+#lon_b = (-6.32, -6.21)
+#lat_b = (53.325, 53.365)
 
 # Plot
-plt.xlim(lon_b)
-plt.ylim(lat_b)
+#plt.xlim(lon_b)
+#plt.ylim(lat_b)
 
 plt.show()

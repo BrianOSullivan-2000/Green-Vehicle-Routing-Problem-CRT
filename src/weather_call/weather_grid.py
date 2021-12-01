@@ -16,10 +16,10 @@ df = ds.to_dataframe()
 df1 = df['tp'].dropna()
 df1 = df1.reset_index()
 
-
 # Lets go with my birthday
 time_idx = df1['time'].iloc[249568]
 gdf = df1[df1['time'] == time_idx]
+gdf.to_pickle("data/weather_matrices/2016-01-28_4pm.pkl")
 
 # Convert to mm
 gdf.loc[:, 'tp'] = gdf.loc[:, 'tp'] * 1000
@@ -77,7 +77,7 @@ for i in range(len(x)):
 
 
 grid_geom = pd.Series(recs).apply(lambda x: Polygon(x))
-#i_gdf['geometry'] = grid_geom
+i_gdf['geometry'] = grid_geom
 
 
 # Bin values according to rainfall ranges
@@ -86,8 +86,33 @@ grid_geom = pd.Series(recs).apply(lambda x: Polygon(x))
 m50_bins = np.array((0, 0.0005, 0.5, 4, 50))
 london_bins = np.array((0, 0.0005, 0.2, 6, 50))
 
-i_gdf['Rain_Type'] = np.digitize(i_gdf['Precipitation'], m50_bins)
+m50_vals = np.array((1, 1-0.025, 1-0.053, 1-0.155))
+london_vals = np.array((1, 1-0.021, 1-0.038, 1-0.06))
 
+# Going with london metrics for now
+i_gdf['Rain_Type'] = np.digitize(i_gdf['Precipitation'], london_bins)
+i_gdf['Rain_Type'] = np.array([london_vals[idx] for idx in i_gdf['Rain_Type']])
+
+
+# In[1]
+
+
+geom_df = pd.read_pickle("data/geom_matrices/county_n20.pkl")
+
+inter_recs = i_gdf[i_gdf.crosses(geom_df.iloc[0, 1])]
+
+if not (inter_recs['Rain_Type']==inter_recs['Rain_Type'].iloc[0]).all():
+
+    total_len = geom_df.iloc[0, 1].length
+    len_weights = []
+
+    for rec in inter_recs['geometry']:
+        len_weights.append(rec.intersection(geom_df.iloc[0, 1]).length / total_len)
+
+    net_weight = np.sum(np.array(len_weights) * inter_recs['Rain_Type'])
+
+else:
+    net_weight = inter_recs['Rain_Type'].iloc[0]
 
 
 # In[1]
@@ -104,8 +129,6 @@ dub_df = gpd.read_file("../Brians_Lab/data/counties.shp")
 dub_df = dub_df.set_crs(epsg=4326)
 dub_df = dub_df[dub_df["NAME_TAG"]=="Dublin"]
 
-
-
 gg = gpd.points_from_xy([-6.246406, -6.319458],  [53.428524, 53.353687])
 ggdf = gpd.GeoDataFrame(data={'tp':[0,0]}, geometry=gg, crs={'init' : 'epsg:4326'})
 
@@ -120,7 +143,7 @@ fig, ax = plt.subplots(1, 1, figsize=(10,10))
 dub_df.plot(ax=ax, color='none', edgecolor="k", alpha=1, zorder=3)
 
 # Can plot rainfall by mm or by factor
-i_gdf.plot(ax=ax, column='Precipitation', cmap='Blues', legend=True,
+i_gdf[i_gdf.crosses(geom_df.iloc[0, 1])].plot(ax=ax, column='Precipitation', cmap='Blues', legend=True,
             vmin=0, vmax=np.max(i_gdf['Precipitation']))
 
 #i_gdf.plot(ax=ax, column='Rain_Type', cmap='Blues', legend=True,
