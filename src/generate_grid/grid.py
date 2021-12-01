@@ -3,7 +3,6 @@ import numpy as np
 import geopandas as gpd
 import pandas as pd
 import matplotlib.pyplot as plt
-import scipy as sc
 from scipy.spatial import cKDTree, distance_matrix
 import math
 import utm
@@ -108,7 +107,7 @@ class Grid():
         grid_obs = np.stack((grid_obs_raw[0], grid_obs_raw[1]), axis=1)
 
         # Object for querying nearest points
-        tree = sc.spatial.cKDTree(np.array(obs))
+        tree = cKDTree(np.array(obs))
 
         # Each point in grid determines k=10 nearest points from input data
         # d is separation distances and inds are indexes of corresponding points
@@ -464,7 +463,7 @@ class Grid():
 
             # TODO: Once weather correction factors have been applied to velocity profile
             # matrix, will need a way to match each velocity to closest one available in WLTP
-            
+
             # For each percentage
             for i in range(len(velocity)):
 

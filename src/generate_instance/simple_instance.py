@@ -4,7 +4,6 @@ import numpy as np
 import geopandas as gpd
 import pandas as pd
 import matplotlib.pyplot as plt
-import scipy as sc
 from scipy.spatial import cKDTree, distance_matrix
 import math
 import networkx as nx
@@ -65,7 +64,7 @@ epoints = np.round(ds.to_numpy(), 4)
 # add points to grid
 dublin.add_elevation_points(epoints)
 dublin.add_vertices(vpoints)
-#dublin.create_interpolation(epoints)
+dublin.create_interpolation(epoints)
 
 # create df for grid
 dublin.create_df()
@@ -124,7 +123,7 @@ dub_df = gpd.read_file("../Brians_Lab/data/counties.shp")
 dub_df = dub_df.set_crs(epsg=4326)
 dub_df = dub_df[dub_df["NAME_TAG"]=="Dublin"]
 
-gdf = gdf[geometry.within(dub_df.geometry.values[0])]
+#gdf = gdf[geometry.within(dub_df.geometry.values[0])]
 
 # In[1]
 
