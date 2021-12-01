@@ -7,6 +7,8 @@ import pandas as pd
 import geopandas as gpd
 import utm
 from scipy.spatial import cKDTree, distance_matrix
+from shapely.geometry import Polygon
+
 
 # Open the ERA5 dataset, just get precipitation
 ds = xr.open_dataset("data/ERA5_JanFeb.nc")
@@ -22,13 +24,10 @@ gdf = df1[df1['time'] == time_idx]
 gdf.loc[:, 'tp'] = gdf.loc[:, 'tp'] * 1000
 
 
-# In[1]
-
-
 # Bounds
 lon_b = (-6.7, -6.0)
 lat_b = (53.0, 53.7)
-h = 0.01
+h = 0.001
 
 # Quick interpolation of weather data, get original points and grid to interpolate over
 lons, lats, prec = gdf['longitude'], gdf['latitude'], gdf['tp']
@@ -53,14 +52,36 @@ weighted_averages = np.sum(w * prec.values[inds], axis=1) / np.sum(w, axis=1)
 tp = np.reshape(weighted_averages, (len(x), len(y)))
 
 
-# In[1]
-
-# Get gdfs ready for plotting
-# Interpolated data
-
 i_geometry = gpd.points_from_xy(xx.flatten(), yy.flatten())
 i_names = {'Precipitation':tp.flatten(), 'longitude':xx.flatten(), 'latitude':yy.flatten()}
 i_gdf = gpd.GeoDataFrame(pd.DataFrame(data=i_names), columns=['Precipitation'], geometry=i_geometry, crs={'init' : 'epsg:4326'})
+
+
+# Get grid of midpoints
+x_mid, y_mid = np.arange(x[0] - (h/2), x[-1] + 2*(h/2), h), np.arange(y[0] - (h/2), y[-1] + 2*(h/2), h)
+x0, y0 = x_mid[0], y_mid[0]
+x_step, y_step = x0, y0
+
+recs = []
+for i in range(len(x)):
+
+    y_step = y0
+
+    for j in range(len(y)):
+
+        recs.append([(x_step, y_step), (x_step+h, y_step), (x_step+h, y_step+h), (x_step, y_step+h)])
+        y_step += h
+
+    x_step += h
+
+
+grid_geom = gpd.GeoSeries(recs).apply(lambda x: Polygon(x))
+i_gdf['geometry'] = grid_geom
+
+
+
+# In[1]
+
 
 # Raw data
 geometry = gpd.points_from_xy(gdf['longitude'], gdf['latitude'])
@@ -81,26 +102,24 @@ ggdf = gpd.GeoDataFrame(data={'tp':[0,0]}, geometry=gg, crs={'init' : 'epsg:4326
 #i_gdf = i_gdf.iloc[::50, :]
 
 gdf = gdf[gdf.within(dub_df.geometry.values[0])]
-i_gdf = i_gdf[i_gdf.within(dub_df.geometry.values[0])]
-
-
-# In[1]
+#i_gdf = i_gdf[i_gdf.within(dub_df.geometry.values[0])]
 
 
 # Plotting
 fig, ax = plt.subplots(1, 1, figsize=(10,10))
 dub_df.plot(ax=ax, color='none', edgecolor="k", alpha=1, zorder=3)
 
-i_gdf.plot(ax=ax, column='Precipitation', cmap='Blues', vmin=0,
-         marker=',', markersize=500, legend=True, alpha=1, zorder=1)
+i_gdf.plot(ax=ax, column='Precipitation', cmap='Blues', legend=True,
+            vmin=0)
 
 gdf.plot(ax=ax, color="k", marker=',', markersize=5, alpha=1, zorder=2)
 
 ggdf.plot(ax=ax, markersize=10, zorder=3)
+
 # Bounds for limits
 #lon_b = (-6.4759, -6.0843)
 #lat_b = (53.2294, 53.4598)
 
-plt.xlim(lon_b)
-plt.ylim(lat_b)
+#plt.xlim(lon_b)
+#plt.ylim(lat_b)
 plt.show()
