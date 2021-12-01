@@ -27,7 +27,7 @@ gdf.loc[:, 'tp'] = gdf.loc[:, 'tp'] * 1000
 # Bounds
 lon_b = (-6.7, -6.0)
 lat_b = (53.0, 53.7)
-h = 0.001
+h = 0.005
 
 # Quick interpolation of weather data, get original points and grid to interpolate over
 lons, lats, prec = gdf['longitude'], gdf['latitude'], gdf['tp']
@@ -45,7 +45,7 @@ grid_obs = np.stack((grid_obs_raw[0], grid_obs_raw[1]), axis=1)
 # IDW2 interpolation
 tree = cKDTree(np.array(obs))
 d, inds = tree.query(np.array(grid_obs), k=7)
-w = 1.0 / d**3
+w = 1.0 / d**2
 weighted_averages = np.sum(w * prec.values[inds], axis=1) / np.sum(w, axis=1)
 
 # Set elevation to each gridpoint
@@ -75,8 +75,8 @@ for i in range(len(x)):
     x_step += h
 
 
-grid_geom = gpd.GeoSeries(recs).apply(lambda x: Polygon(x))
-i_gdf['geometry'] = grid_geom
+grid_geom = pd.Series(recs).apply(lambda x: Polygon(x))
+#i_gdf['geometry'] = grid_geom
 
 
 
@@ -101,7 +101,7 @@ ggdf = gpd.GeoDataFrame(data={'tp':[0,0]}, geometry=gg, crs={'init' : 'epsg:4326
 
 #i_gdf = i_gdf.iloc[::50, :]
 
-gdf = gdf[gdf.within(dub_df.geometry.values[0])]
+#gdf = gdf[gdf.within(dub_df.geometry.values[0])]
 #i_gdf = i_gdf[i_gdf.within(dub_df.geometry.values[0])]
 
 
@@ -110,16 +110,18 @@ fig, ax = plt.subplots(1, 1, figsize=(10,10))
 dub_df.plot(ax=ax, color='none', edgecolor="k", alpha=1, zorder=3)
 
 i_gdf.plot(ax=ax, column='Precipitation', cmap='Blues', legend=True,
-            vmin=0)
+            vmin=0, vmax=np.max(i_gdf['Precipitation']))
 
-gdf.plot(ax=ax, color="k", marker=',', markersize=5, alpha=1, zorder=2)
+gdf.plot(ax=ax, column='Precipitation',  cmap='Blues', marker=',', markersize=5,
+         vmin=0, vmax=np.max(i_gdf['Precipitation']), alpha=1, zorder=2)
 
-ggdf.plot(ax=ax, markersize=10, zorder=3)
+ggdf.plot(ax=ax, color='k', markersize=10, zorder=3)
 
 # Bounds for limits
 #lon_b = (-6.4759, -6.0843)
 #lat_b = (53.2294, 53.4598)
 
+i_gdf
 #plt.xlim(lon_b)
 #plt.ylim(lat_b)
 plt.show()
