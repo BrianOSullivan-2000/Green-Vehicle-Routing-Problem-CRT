@@ -373,6 +373,58 @@ class Grid():
 
 
 
+    def compute_weather_correction(self):
+        """ This function gets the overall rainfall levels over the
+            line geometry of each edge using the self.weather grid.
+
+            Output is saved as velocity correction factor along
+            each edge caused by rainfall.
+        """
+
+        # Read in shape of output matrix
+        self.rainfall_correction_matrix = self.geom_matrix.copy()
+
+        # Iterate over each row of matrix
+        for index, row in self.geom_matrix.iterrows():
+
+            # list of weights for each row
+            net_weights = []
+
+            # For each line in row
+            for line in row:
+                # Only compute if line exists
+                if line != 0:
+
+                    # Find all intersecting rectanges in weather grid
+                    inter_recs = self.weather[self.weather.crosses(line)]
+
+                    # Only bother computing if there is variance along line
+                    if not (inter_recs['Rain_Correction']==inter_recs['Rain_Correction'].iloc[0]).all():
+
+                        # Get total length and length weights
+                        total_len, len_weights = line.length, []
+
+                        # find proportion of line within each intersecting rectangle
+                        for rec in inter_recs['geometry']:
+                            len_weights.append(rec.intersection(line).length / total_len)
+
+                        # Sum up contributions from each rectangle for final correction factor
+                        net_weights.append(np.sum(np.array(len_weights) * inter_recs['Rain_Correction']))
+
+                    # Correction factor is constant, no need for computation
+                    else:
+                        net_weights.append(inter_recs['Rain_Correction'].iloc[0])
+
+                # Include zeros to maintain shape of matrix
+                else:
+                    net_weights.append(0)
+
+            # Adjust row with rainfall correction factors
+            self.rainfall_correction_matrix[index] = net_weights
+
+
+
+            
     def compute_speed_profile(self, filename=None):
         """ Compute average velocity along paths between all vertices.
             Represented as pandas DataFrame. Average velocity currently accessed

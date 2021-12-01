@@ -143,7 +143,7 @@ fig, ax = plt.subplots(1, 1, figsize=(10,10))
 dub_df.plot(ax=ax, color='none', edgecolor="k", alpha=1, zorder=3)
 
 # Can plot rainfall by mm or by factor
-i_gdf[i_gdf.crosses(geom_df.iloc[0, 1])].plot(ax=ax, column='Precipitation', cmap='Blues', legend=True,
+i_gdf.plot(ax=ax, column='Precipitation', cmap='Blues', legend=True,
             vmin=0, vmax=np.max(i_gdf['Precipitation']))
 
 #i_gdf.plot(ax=ax, column='Rain_Type', cmap='Blues', legend=True,

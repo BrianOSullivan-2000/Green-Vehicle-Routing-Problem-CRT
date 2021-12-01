@@ -76,6 +76,8 @@ dublin.read_driving_cycle("data/WLTP.csv", h=4)
 dublin.compute_speed_profile(filename="data/speed_matrices/sparse_n20.pkl")
 dublin.create_geometries("data/geom_matrices/sparse_n20.pkl")
 dublin.read_weather(filename="data/weather_matrices/2016-01-28_4pm.pkl")
+
+dublin.compute_weather_correction()
 dublin.compute_cost(method="COPERT with meet")
 
 np.set_printoptions(suppress=True)
@@ -84,7 +86,9 @@ dublin.cost_matrix
 
 
 
+
 # In[1]
+
 
 import src.generate_tsplib.generate_tsplib as tsp
 
