@@ -462,6 +462,9 @@ class Grid():
             # Percentage of stoppage time according to speeds from driving cycles
             stop_percentages = [float(p[0:-1]) for p in self.dc_net['p_stop (%)']]
 
+            # TODO: Once weather correction factors have been applied to velocity profile
+            # matrix, will need a way to match each velocity to closest one available in WLTP
+            
             # For each percentage
             for i in range(len(velocity)):
 
