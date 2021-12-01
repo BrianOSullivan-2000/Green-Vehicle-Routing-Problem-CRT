@@ -16,6 +16,7 @@ df = ds.to_dataframe()
 df1 = df['tp'].dropna()
 df1 = df1.reset_index()
 
+
 # Lets go with my birthday
 time_idx = df1['time'].iloc[249568]
 gdf = df1[df1['time'] == time_idx]
@@ -79,6 +80,15 @@ grid_geom = pd.Series(recs).apply(lambda x: Polygon(x))
 #i_gdf['geometry'] = grid_geom
 
 
+# Bin values according to rainfall ranges
+# Two different options, m50 study by De Courcy et al
+# or London study by Tsapakis et al
+m50_bins = np.array((0, 0.0005, 0.5, 4, 50))
+london_bins = np.array((0, 0.0005, 0.2, 6, 50))
+
+i_gdf['Rain_Type'] = np.digitize(i_gdf['Precipitation'], m50_bins)
+
+
 
 # In[1]
 
@@ -109,8 +119,13 @@ ggdf = gpd.GeoDataFrame(data={'tp':[0,0]}, geometry=gg, crs={'init' : 'epsg:4326
 fig, ax = plt.subplots(1, 1, figsize=(10,10))
 dub_df.plot(ax=ax, color='none', edgecolor="k", alpha=1, zorder=3)
 
+# Can plot rainfall by mm or by factor
 i_gdf.plot(ax=ax, column='Precipitation', cmap='Blues', legend=True,
             vmin=0, vmax=np.max(i_gdf['Precipitation']))
+
+#i_gdf.plot(ax=ax, column='Rain_Type', cmap='Blues', legend=True,
+#            vmin=0, vmax=np.max(i_gdf['Rain_Type']))
+
 
 gdf.plot(ax=ax, column='Precipitation',  cmap='Blues', marker=',', markersize=5,
          vmin=0, vmax=np.max(i_gdf['Precipitation']), alpha=1, zorder=2)
@@ -121,7 +136,6 @@ ggdf.plot(ax=ax, color='k', markersize=10, zorder=3)
 #lon_b = (-6.4759, -6.0843)
 #lat_b = (53.2294, 53.4598)
 
-i_gdf
 #plt.xlim(lon_b)
 #plt.ylim(lat_b)
 plt.show()
