@@ -35,7 +35,7 @@ ds = pd.read_pickle("data/scats_sites_with_elev.pkl")
 ds = ds.loc[:, "Lat":"Elev"]
 
 # Vertices
-vdf = pd.read_pickle("data/distance_matrices/sparse_n200.pkl")
+vdf = pd.read_pickle("data/distance_matrices/sparse_n20.pkl")
 vpoints = list(vdf.columns)
 
 vpoints = np.round(np.array(vpoints), 4)
@@ -43,8 +43,8 @@ vpoints = np.round(np.array(vpoints), 4)
 
 # We can get the elevations directly from open elevation instead of interpolating (TODO: ask others how to do this)
 vdf = pd.DataFrame(vpoints, columns=['longitude', 'latitude'])
-vdf.to_pickle("data/instance_elevs/n200/n200_lat_long.pkl")
-create_elev_query_file("data/instance_elevs/n200/n200_lat_long.pkl", "data/instance_elevs/n200/n200_to_query.json")
+vdf.to_pickle("data/instance_elevs/n20/n20_lat_long.pkl")
+create_elev_query_file("data/instance_elevs/n20/n20_lat_long.pkl", "data/instance_elevs/n20/n20_to_query.json")
 
 
 # Clean data up a little
@@ -70,16 +70,16 @@ dublin.create_interpolation(epoints)
 dublin.create_df()
 
 # compute matrices for various edges
-dublin.compute_distance(mode="OSM", filename="data/distance_matrices/sparse_n200.pkl")
+dublin.compute_distance(mode="OSM", filename="data/distance_matrices/sparse_n20.pkl")
 dublin.compute_gradient()
 dublin.read_driving_cycle("data/WLTP.csv", h=4)
-dublin.compute_speed_profile(filename="data/speed_matrices/sparse_n200.pkl")
-dublin.create_geometries("data/geom_matrices/sparse_n200.pkl")
+dublin.compute_speed_profile(filename="data/speed_matrices/sparse_n20.pkl")
+dublin.create_geometries("data/geom_matrices/sparse_n20.pkl")
 dublin.compute_cost(method="COPERT with meet")
 
 np.set_printoptions(suppress=True)
 
-dublin.cost_matrix.values.flatten()[dublin.cost_matrix.values.flatten()!=0]
+dublin.cost_matrix
 
 
 
@@ -92,13 +92,13 @@ nodes = nodes[:, 0:2]
 edge_weights = dublin.cost_matrix.to_numpy()
 
 
-tsp.generate_tsplib(filename="instances/sample_n200", instance_name="instance", capacity=100, edge_weight_type="EXPLICIT", edge_weight_format="FULL_MATRIX",
+tsp.generate_tsplib(filename="instances/sample_n20", instance_name="instance", capacity=100, edge_weight_type="EXPLICIT", edge_weight_format="FULL_MATRIX",
                     nodes=nodes, demand=np.ones(len(nodes)), depot_index=[0], edge_weights=edge_weights)
 
 
 # In[1]
 
-df = dublin.df.iloc[::500, :]
+df = dublin.df.iloc[::50, :]
 
 # Make dataframe
 names = {'Elevation':df['elevation'], 'longitude':df['x'], 'latitude':df['y']}
@@ -145,6 +145,9 @@ gdf_v.plot(ax=ax, color="k", marker=',', markersize=1, zorder=5)
 # Bounds for limits
 lon_b = (-6.4759, -6.0843)
 lat_b = (53.2294, 53.4598)
+
+lon_b = (-6.32, -6.21)
+lat_b = (53.325, 53.365)
 
 # Plot
 plt.xlim(lon_b)

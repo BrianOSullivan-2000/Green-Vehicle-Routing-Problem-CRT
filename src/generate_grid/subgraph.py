@@ -31,6 +31,10 @@ nds, eds = nodes, edges
 lon_b = (-6.32, -6.21)
 lat_b = (53.325, 53.365)
 
+# Bigger bounding box
+lon_b = (-6.4759, -6.0843)
+lat_b = (53.2294, 53.4598)
+
 
 # Drop nodes outside bounding box
 nds = nds.drop(nds[nds['x']==0].index)
@@ -52,10 +56,11 @@ eds = eds[eds.within(bounding_box)]
 types = np.unique(eds.dropna(subset=['highway'])['highway'].values)
 
 # check the indices
+# We want to generally go with motorway, trunk, primary, secondary, and all the corresponding link roads
 types
 
 # Only have network of main roads
-main_roads = types[[2, 3, 5, 6, 8, 9, 10, 11]]
+main_roads = types[[3, 4, 6, 7, 9, 10, 15, 16]]
 eds = eds[eds['highway'].isin(main_roads)]
 
 
@@ -233,9 +238,12 @@ nds, eds = momepy.nx_to_gdf(GG)
 eds.plot(ax=ax, alpha=0.2, color="k", linewidth=2, zorder=3)
 nds.plot(ax=ax, color='crimson', markersize=7)
 
-# Bounds for limits
-lon_b = (-6.32, -6.21)
-lat_b = (53.325, 53.365)
+lon_b = (-6.4759, -6.0843)
+lat_b = (53.2294, 53.4598)
+
+# Dublin Circular North and South
+#lon_b = (-6.32, -6.21)
+#lat_b = (53.325, 53.365)
 
 # Bounds to zoom in on a small cluster (O'Connell Bridge)
 #lon_b = (-6.265, -6.25)
@@ -256,12 +264,13 @@ plt.show()
 # Code for contracting edges, simplifies node clusters in graph
 
 # Make new graph to iterate over
-con_graph = GG.copy()
-nds, eds = momepy.nx_to_gdf(GG)
+#con_graph = GG.copy()
+#nds, eds = momepy.nx_to_gdf(GG)
 geom_err = 0
+count = 0
 
 # Remove 250 shortest edges
-for i in range(250):
+for i in range(600):
 
     # Get smallest edge and get node coordinates
     edge = eds[eds['length'] == np.min(eds['length'].values)]
@@ -354,10 +363,18 @@ for i in range(250):
         finally:
             g_idx += 1
 
+
+
+    # impromptu progress bar
+    count += 1
+    if count % 100 == 0:
+        print(count // 100)
+
     # Another reset to prepare for next iteration
     con_graph = momepy.gdf_to_nx(eds)
     nds, eds = momepy.nx_to_gdf(con_graph)
 
+print(eds.shape)
 
 
 # In[1]
@@ -370,24 +387,28 @@ dub_df.plot(ax=ax, color="c", edgecolor="k", alpha=0.4, zorder=2)
 
 # Plot edges and nodes
 eds.plot(ax=ax, alpha=1, color="silver", linewidth=2, zorder=1)
-nds.plot(ax=ax, color='crimson', markersize=15)
+nds.plot(ax=ax, color='crimson', markersize=10)
 
-# Bounds for limits
-lon_b = (-6.32, -6.21)
-lat_b = (53.325, 53.365)
 
+lon_b = (-6.4759, -6.0843)
+lat_b = (53.2294, 53.4598)
+
+# Dublin Circular North and South
+#lon_b = (-6.32, -6.21)
+#lat_b = (53.325, 53.365)
 
 # O'Connell Bridge
 #lon_b = (-6.265, -6.25)
 #lat_b = (53.343, 53.35)
-#lon_b = (-6.2585, -6.2580)
-#lat_b = (53.341, 53.342)
+#lon_b = (-6.389, -6.385)
+#lat_b = (53.410, 53.415)
 
 
 
 # Plot
 plt.xlim(lon_b)
 plt.ylim(lat_b)
+print(eds.shape)
 #plt.savefig("data/figures/dublin_clean.jpeg", dpi=300)
 plt.show()
 
@@ -402,7 +423,7 @@ eds['end_coord'] = np.array(con_graph.edges)[:, 1]
 indices = np.arange(np.array(list(con_graph.nodes)).shape[0])
 
 # Pick random IDs and get their coordinates (for networkx)
-sample_ids = np.random.choice(indices, 200, replace=False)
+sample_ids = np.random.choice(indices, 20, replace=False)
 sample_coords = np.array(list(con_graph.nodes))[sample_ids]
 
 
@@ -426,6 +447,8 @@ count = 0
 pairs = np.array(list(itertools.combinations(sample_coords, 2)))
 id_pairs = np.array(list(itertools.combinations(sample_ids, 2)))
 
+# Get depot_coord and id
+depot_coord, depot_point = sample_coords[0], sample_ids[0]
 
 # loop through node pairs, find path and path_length for each
 for i in range(len(pairs)):
@@ -439,7 +462,7 @@ for i in range(len(pairs)):
     path = np.array(nx.shortest_path(con_graph, tuple(nodes[0]), tuple(nodes[1]), weight='length'))
 
     # Only include path if none of the other selected nodes lie along it
-    if len([i for i in path if i in sample_coords]) == 2:
+    if (depot_coord in pair) or (len([i for i in path if i in sample_coords]) == 2):
 
         # get path length, add to matrix, count
         path_length = nx.shortest_path_length(con_graph, tuple(pair[0]), tuple(pair[1]), weight='length')
@@ -497,7 +520,10 @@ distance_matrix.index, distance_matrix.columns = coord_list, coord_list
 speed_matrix.index, speed_matrix.columns = coord_list, coord_list
 geom_matrix.index, geom_matrix.columns = coord_list, coord_list
 
+
+distance_matrix
+
 # Look at how sparse it is
-distance_matrix.to_pickle("data/distance_matrices/sparse_n200.pkl")
-speed_matrix.to_pickle("data/speed_matrices/sparse_n200.pkl")
-geom_matrix.to_pickle("data/geom_matrices/sparse_n200.pkl")
+distance_matrix.to_pickle("data/distance_matrices/county_n20.pkl")
+speed_matrix.to_pickle("data/speed_matrices/county_n20.pkl")
+geom_matrix.to_pickle("data/geom_matrices/county_n20.pkl")
