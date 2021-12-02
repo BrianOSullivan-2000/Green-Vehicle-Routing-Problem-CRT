@@ -382,7 +382,7 @@ class Grid():
         """
 
         # Read in shape of output matrix
-        self.rainfall_correction_matrix = self.geom_matrix.copy()
+        self.weather_correction_matrix = self.geom_matrix.copy()
 
         # Iterate over each row of matrix
         for index, row in self.geom_matrix.iterrows():
@@ -420,11 +420,11 @@ class Grid():
                     net_weights.append(0)
 
             # Adjust row with rainfall correction factors
-            self.rainfall_correction_matrix[index] = net_weights
+            self.weather_correction_matrix[index] = net_weights
 
 
 
-            
+
     def compute_speed_profile(self, filename=None):
         """ Compute average velocity along paths between all vertices.
             Represented as pandas DataFrame. Average velocity currently accessed
@@ -462,6 +462,7 @@ class Grid():
 
             # Create bins using midpoint between average velocities in driving cycles
             bins = [(velocity[i] + velocity[i+1])/2 for i in range(len(velocity)-1)]
+            bins[0] = 0
             bins.append(200)
 
             # Read speed matrix and save dataframe shape, indexes and columns
@@ -478,7 +479,7 @@ class Grid():
 
 
 
-    def compute_cost(self, method="MEET", idling=True, load=False):
+    def compute_cost(self, method="MEET", idling=True, load=True, weather=True):
         """ Compute CO2 emitted along paths between all vertices using either
             MEET or COPERT methodologies. Represented as pandas DataFrame.
             Model coefficients from MEET or COPERT files previously read.
@@ -494,6 +495,11 @@ class Grid():
         # Need distance and velocity matrices
         d = self.distance_matrix.to_numpy() / 1000
         velocities = self.velocity_matrix.to_numpy()
+
+        # Adjust velocities by rainfall correction factors
+        if weather == True:
+            velocities = velocities * self.weather_correction_matrix.to_numpy()
+
 
         # Round gradient matrix to values in [-6, -4, -2, 0, 2, 4, 6]
         grad = self.gradient_matrix.to_numpy() * 100
@@ -606,8 +612,11 @@ class Grid():
         # Add idling costs
         if idling == True:
 
-            # Average velocities from driving cycle
-            velocity = self.dc_net['v_ave without stops (km/h)']
+            # Average velocities from driving cycle, add lower bound for binning
+            velocity = list(self.dc_net['v_ave without stops (km/h)'])
+
+            # Create bins using midpoint between average velocities
+            bins = [(velocity[i] + velocity[i+1])/2 for i in range(len(velocity)-1)]
 
             # Find travel time along each edge without stops in seconds
             travel_times = (d / velocities) * 3600
@@ -615,14 +624,16 @@ class Grid():
             # Percentage of stoppage time according to speeds from driving cycles
             stop_percentages = [float(p[0:-1]) for p in self.dc_net['p_stop (%)']]
 
-            # TODO: Once weather correction factors have been applied to velocity profile
-            # matrix, will need a way to match each velocity to closest one available in WLTP
+            v_binned = np.array([velocity[idx] for idx in np.digitize(velocities.flatten(), bins)])
+            v_binned = np.reshape(v_binned, velocities.shape)
+            v_binned[velocities==0] = 0
 
             # For each percentage
             for i in range(len(velocity)):
 
                 # Compute total time stopped as percentage of total time travelling
-                travel_times[velocities==velocity[i]] = (stop_percentages[i] / 100) * travel_times[velocities==velocity[i]]
+                travel_times[v_binned==velocity[i]] = (stop_percentages[i] / 100) * travel_times[v_binned==velocity[i]]
+
 
             # Add costs from idling (0.4617g/s CO2 emitted while idling)
             cost = cost + travel_times * 0.4617
