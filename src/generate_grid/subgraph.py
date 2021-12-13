@@ -32,8 +32,8 @@ lon_b = (-6.32, -6.21)
 lat_b = (53.325, 53.365)
 
 # Bigger bounding box
-lon_b = (-6.4759, -6.0843)
-lat_b = (53.2294, 53.4598)
+#lon_b = (-6.4759, -6.0843)
+#lat_b = (53.2294, 53.4598)
 
 
 # Drop nodes outside bounding box
@@ -60,7 +60,8 @@ types = np.unique(eds.dropna(subset=['highway'])['highway'].values)
 types
 
 # Only have network of main roads
-main_roads = types[[3, 4, 6, 7, 9, 10, 15, 16]]
+#main_roads = types[[3, 4, 6, 7, 9, 10, 15, 16]]
+main_roads = types[[2, 3, 5, 6, 8, 9, 10, 11]]
 eds = eds[eds['highway'].isin(main_roads)]
 
 
@@ -242,8 +243,8 @@ lon_b = (-6.4759, -6.0843)
 lat_b = (53.2294, 53.4598)
 
 # Dublin Circular North and South
-#lon_b = (-6.32, -6.21)
-#lat_b = (53.325, 53.365)
+lon_b = (-6.32, -6.21)
+lat_b = (53.325, 53.365)
 
 # Bounds to zoom in on a small cluster (O'Connell Bridge)
 #lon_b = (-6.265, -6.25)
@@ -264,13 +265,13 @@ plt.show()
 # Code for contracting edges, simplifies node clusters in graph
 
 # Make new graph to iterate over
-#con_graph = GG.copy()
-#nds, eds = momepy.nx_to_gdf(GG)
+con_graph = GG.copy()
+nds, eds = momepy.nx_to_gdf(GG)
 geom_err = 0
 count = 0
 
 # Remove 250 shortest edges
-for i in range(600):
+for i in range(300):
 
     # Get smallest edge and get node coordinates
     edge = eds[eds['length'] == np.min(eds['length'].values)]
@@ -394,8 +395,8 @@ lon_b = (-6.4759, -6.0843)
 lat_b = (53.2294, 53.4598)
 
 # Dublin Circular North and South
-#lon_b = (-6.32, -6.21)
-#lat_b = (53.325, 53.365)
+lon_b = (-6.32, -6.21)
+lat_b = (53.325, 53.365)
 
 # O'Connell Bridge
 #lon_b = (-6.265, -6.25)
@@ -443,12 +444,32 @@ geom_matrix = distance_matrix.copy()
 # count for tracking
 count = 0
 
+# Get depot_coord and id
+from scipy.spatial import distance
+
+# Function to find closest point to another point from list of points
+def closest_node(node, nodes):
+    closest_index = distance.cdist([node], nodes).argmin()
+    return nodes[closest_index]
+
+# Set a corner for depot (for example bottom left, top right)
+corner = (np.mean(sample_coords[:, 0]), np.mean(sample_coords[:, 1]))
+
+# Get depot coordinates and position in current points
+depot = closest_node(corner, sample_coords)
+d_idx = np.where(sample_coords == depot)[0][0]
+
+# Set depot to beginning of sample points
+sample_coords[[0, d_idx]] = sample_coords[[d_idx, 0]]
+depot_coord, depot_point = sample_coords[0], sample_ids[0]
+
 # every node pair combination
 pairs = np.array(list(itertools.combinations(sample_coords, 2)))
 id_pairs = np.array(list(itertools.combinations(sample_ids, 2)))
 
-# Get depot_coord and id
-depot_coord, depot_point = sample_coords[0], sample_ids[0]
+
+
+
 
 # loop through node pairs, find path and path_length for each
 for i in range(len(pairs)):
@@ -492,9 +513,6 @@ for i in range(len(pairs)):
         geom_matrix.loc[id_pair[0], id_pair[1]] = newline
 
 
-
-
-
     # impromptu progress bar
     count += 1
     if count % 1000 == 0:
@@ -524,6 +542,6 @@ geom_matrix.index, geom_matrix.columns = coord_list, coord_list
 distance_matrix
 
 # Look at how sparse it is
-distance_matrix.to_pickle("data/distance_matrices/county_n20.pkl")
-speed_matrix.to_pickle("data/speed_matrices/county_n20.pkl")
-geom_matrix.to_pickle("data/geom_matrices/county_n20.pkl")
+#distance_matrix.to_pickle("data/distance_matrices/county_n20.pkl")
+#speed_matrix.to_pickle("data/speed_matrices/county_n20.pkl")
+#geom_matrix.to_pickle("data/geom_matrices/county_n20.pkl")

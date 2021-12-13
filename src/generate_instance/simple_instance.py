@@ -75,15 +75,14 @@ dublin.compute_gradient()
 dublin.read_driving_cycle("data/WLTP.csv", h=4)
 dublin.compute_speed_profile(filename="data/speed_matrices/sparse_n20.pkl")
 dublin.create_geometries("data/geom_matrices/sparse_n20.pkl")
-dublin.read_weather(filename="data/weather_matrices/2016-01-28_4pm.pkl")
+dublin.read_weather(filename="data/weather_matrices/2016-01-28_4pm_tp.pkl")
 dublin.compute_weather_correction()
+
+dublin.read_skin_temp(filename="data/weather_matrices/2016-01-28_4pm_skt.pkl")
 
 dublin.compute_cost(method="COPERT with meet")
 
 np.set_printoptions(suppress=True)
-
-dublin.distance_matrix.head()
-dublin.travel_times[0]
 
 
 
@@ -103,7 +102,7 @@ tsp.generate_tsplib(filename="instances/sample_n20", instance_name="instance", c
 
 # In[1]
 
-df = dublin.df.iloc[::50, :]
+df = dublin.df.iloc[::200, :]
 
 # Make dataframe
 names = {'Elevation':df['elevation'], 'longitude':df['x'], 'latitude':df['y']}
@@ -118,7 +117,7 @@ gdf = gdf.set_crs(epsg=4326, allow_override=True)
 
 
 geometry_v = gpd.points_from_xy(vpoints[:, 0], vpoints[:, 1])
-gdf_v = gpd.GeoDataFrame(data=pd.DataFrame(vpoints), geometry=geometry_v, crs={'init' : 'epsg:4326'})
+gdf_v = gpd.GeoDataFrame(data=dublin.df[dublin.df['is_vertice'] != 0], geometry=geometry_v, crs={'init' : 'epsg:4326'})
 gdf_v = gdf_v.set_crs(epsg=4326, allow_override=True)
 
 # Dublin shapefile (NOT IN GITHUB, go to https://www.townlands.ie/page/download/ to access)
@@ -136,29 +135,32 @@ dub_df = dub_df[dub_df["NAME_TAG"]=="Dublin"]
 fig, ax = plt.subplots(1, 1, figsize=(10,10))
 
 # Plot elevations
-#gdf.plot(ax=ax, column='Elevation', cmap='terrain', vmin = -60, vmax = 200,
-#         marker=',', markersize=15, legend=True, alpha=0.7, zorder=1)
+gdf.plot(ax=ax, column='Elevation', cmap='terrain', vmin = -60, vmax = 200,
+         marker=',', markersize=15, legend=True, alpha=0.7, zorder=1)
 
 # Plot rainfall
-dublin.weather.plot(ax=ax, column='Precipitation', cmap='Blues', legend=True,
-            vmin=0, vmax=np.max(dublin.weather['Precipitation']))
+#dublin.weather.plot(ax=ax, column='Precipitation', cmap='Blues', legend=True,
+            #vmin=0, vmax=np.max(dublin.weather['Precipitation']))
+
 # Add county border
 dub_df.plot(ax=ax, color="none", edgecolor="k", alpha=0.5, zorder=2)
-
 
 # Plot vertices
 gdf_v.plot(ax=ax, color="k", marker=',', markersize=1, zorder=5)
 
+# Can label vertices of points
+#for x, y, label in zip(gdf_v.geometry.x, gdf_v.geometry.y, gdf_v.is_vertice):
+    #ax.annotate(label, xy=(x, y), xytext=(3, 3), textcoords="offset points")
 
 # Bounds for limits
-#lon_b = (-6.4759, -6.0843)
-#lat_b = (53.2294, 53.4598)
+lon_b = (-6.35, -6.15)
+lat_b = (53.25, 53.4)
 
 #lon_b = (-6.32, -6.21)
 #lat_b = (53.325, 53.365)
 
 # Plot
-#plt.xlim(lon_b)
-#plt.ylim(lat_b)
+plt.xlim(lon_b)
+plt.ylim(lat_b)
 
 plt.show()

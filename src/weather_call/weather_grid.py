@@ -13,16 +13,19 @@ from shapely.geometry import Polygon
 # Open the ERA5 dataset, just get precipitation
 ds = xr.open_dataset("data/ERA5_JanFeb.nc")
 df = ds.to_dataframe()
-df1 = df['tp'].dropna()
+df1 = df['skt'].dropna()
 df1 = df1.reset_index()
 
 # Lets go with my birthday
 time_idx = df1['time'].iloc[249568]
 gdf = df1[df1['time'] == time_idx]
-gdf.to_pickle("data/weather_matrices/2016-01-28_4pm.pkl")
+gdf.to_pickle("data/weather_matrices/2016-01-28_4pm_skt.pkl")
 
 # Convert to mm
-gdf.loc[:, 'tp'] = gdf.loc[:, 'tp'] * 1000
+#gdf.loc[:, 'tp'] = gdf.loc[:, 'tp'] * 1000
+
+# Convert to Celsius
+gdf.loc[:, 'skt'] = gdf.loc[:, 'skt'] - 273.15
 
 
 # Bounds

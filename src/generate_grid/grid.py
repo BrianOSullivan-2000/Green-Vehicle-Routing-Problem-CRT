@@ -142,6 +142,10 @@ class Grid():
         # Create DataFrame
         self.df = pd.DataFrame(data=data)
 
+        # Order vertices
+        self.df.loc[self.df['is_vertice'] != 0, 'is_vertice'] = np.arange(1,21)
+        self.depot = self.df.loc[self.df['is_vertice'] == 1]
+
 
 
 
@@ -347,6 +351,25 @@ class Grid():
 
         # Final output of GeoDataFrame
         self.weather = gdf
+
+
+
+
+    def read_skin_temp(self, filename):
+        """ Interpolate skin temperature for grid. Temperature is
+            only interpolated at depot location for cold starts.
+
+            filename - path to average hourly temperature data in degrees
+                       Celsius with label 'skt' (Skin Temperature),
+                       coordinate columns assumed "longitude" and "latitude",
+                       file type is pickle (.pkl)
+        """
+
+        # Read in file
+        self.temp = pd.read_pickle(filename)
+
+        # Get depot location
+        self.depot = self.df[self.df['is_vertice'] == 1].values
 
 
 
