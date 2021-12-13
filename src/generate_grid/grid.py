@@ -367,9 +367,25 @@ class Grid():
 
         # Read in file
         self.temp = pd.read_pickle(filename)
+        self.temp.loc[:, 'skt'] = self.temp.loc[:, 'skt'] - 273.15
 
-        # Get depot location
-        self.depot = self.df[self.df['is_vertice'] == 1].values
+        # Get depot location and temperature points
+        depot = self.depot.iloc[:, 0:2].values[0]
+        lons, lats, skt = self.temp['longitude'], self.temp['latitude'], self.temp['skt']
+
+        # Convert both input points and gridpoints to grid using UTM projection
+        obs_raw = np.asarray(utm.from_latlon(np.asarray(lons), np.asarray(lats))[0:2])
+        obs = np.stack((obs_raw[0], obs_raw[1]), axis=1)
+        grid_obs_raw = np.asarray(utm.from_latlon(depot[0], depot[1]))
+        grid_obs = np.stack((grid_obs_raw[0], grid_obs_raw[1]))
+
+        # IDW2 interpolation
+        tree = cKDTree(np.array(obs))
+
+        # Get distances, indices, compute weights, find final weighted averages
+        d, inds = tree.query(np.array(grid_obs), k=len(skt))
+        w = 1.0 / d**2
+        self.depot_temp = np.sum(w * skt.values[inds]) / np.sum(w)
 
 
 
