@@ -637,6 +637,7 @@ class Grid():
 
             # Add costs from idling (0.4617g/s CO2 emitted while idling)
             cost = cost + travel_times * 0.4617
+            self.travel_times = travel_times
 
 
         # Round to nearest gram, make dataframe

@@ -82,7 +82,8 @@ dublin.compute_cost(method="COPERT with meet")
 
 np.set_printoptions(suppress=True)
 
-dublin.cost_matrix
+dublin.distance_matrix.head()
+dublin.travel_times[0]
 
 
 
