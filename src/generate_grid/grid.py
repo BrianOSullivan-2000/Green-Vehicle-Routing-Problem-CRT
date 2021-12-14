@@ -552,12 +552,25 @@ class Grid():
         # MEET methodology
         if method.upper() == "MEET":
 
+            if cold == True:
+
+                temp_cf = (-0.0458 * self.depot_temp) + 1.9163
+                cold_distance = (0.29 * velocities[0]) - 0.05
+                beta = self.distance_matrix.iloc[0] / cold_distance
+                speed_cf, a, omega = 1, 3.95, 153.36
+
+                distance_cf = (1 - np.exp(-1*a*beta)) / (1 - np.exp(-1*a))
+
+                EF_cold = omega * (speed_cf + temp_cf - 1) * distance_cf
+
+
             # Available gradients in model
             grads = [-6, -4, -2, 2, 4, 6]
 
             # Base model
             EF = (429.51 - 7.8227*velocities + 0.0617*(velocities**2))
-
+            EF[0] = EF[0] + EF_cold
+            
             # Slope correction factor coefficients
             cfs = self.MEETdf.loc[:, "A6":"Slope (%)"]
 

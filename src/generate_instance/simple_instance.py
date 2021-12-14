@@ -80,9 +80,9 @@ dublin.compute_weather_correction()
 
 dublin.read_skin_temp(filename="data/weather_matrices/2016-01-28_4pm_skt.pkl")
 
-dublin.compute_cost(method="COPERT")
-
+dublin.compute_cost(method="MEET")
 np.set_printoptions(suppress=True)
+
 dublin.cost_matrix
 
 
