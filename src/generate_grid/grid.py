@@ -437,22 +437,26 @@ class Grid():
                     # Find all intersecting rectanges in weather grid
                     inter_recs = self.weather[self.weather.crosses(line)]
 
-                    # Only bother computing if there is variance along line
-                    if not (inter_recs['Rain_Correction']==inter_recs['Rain_Correction'].iloc[0]).all():
+                    if inter_recs.shape[0] > 0:
+                        # Only bother computing if there is variance along line
+                        if not (inter_recs['Rain_Correction']==inter_recs['Rain_Correction'].iloc[0]).all():
 
-                        # Get total length and length weights
-                        total_len, len_weights = line.length, []
+                            # Get total length and length weights
+                            total_len, len_weights = line.length, []
 
-                        # find proportion of line within each intersecting rectangle
-                        for rec in inter_recs['geometry']:
-                            len_weights.append(rec.intersection(line).length / total_len)
+                            # find proportion of line within each intersecting rectangle
+                            for rec in inter_recs['geometry']:
+                                len_weights.append(rec.intersection(line).length / total_len)
 
-                        # Sum up contributions from each rectangle for final correction factor
-                        net_weights.append(np.sum(np.array(len_weights) * inter_recs['Rain_Correction']))
+                            # Sum up contributions from each rectangle for final correction factor
+                            net_weights.append(np.sum(np.array(len_weights) * inter_recs['Rain_Correction']))
 
-                    # Correction factor is constant, no need for computation
+                        # Correction factor is constant, no need for computation
+                        else:
+                            net_weights.append(inter_recs['Rain_Correction'].iloc[0])
+
                     else:
-                        net_weights.append(inter_recs['Rain_Correction'].iloc[0])
+                        net_weights.append(0)
 
                 # Include zeros to maintain shape of matrix
                 else:
@@ -518,7 +522,7 @@ class Grid():
 
 
 
-    def compute_cost(self, method="MEET", idling=True, load=True, weather=True):
+    def compute_cost(self, method="MEET", idling=True, load=True, rain=True, cold=True):
         """ Compute CO2 emitted along paths between all vertices using either
             MEET or COPERT methodologies. Represented as pandas DataFrame.
             Model coefficients from MEET or COPERT files previously read.
@@ -536,9 +540,8 @@ class Grid():
         velocities = self.velocity_matrix.to_numpy()
 
         # Adjust velocities by rainfall correction factors
-        if weather == True:
+        if rain == True:
             velocities = velocities * self.weather_correction_matrix.to_numpy()
-
 
         # Round gradient matrix to values in [-6, -4, -2, 0, 2, 4, 6]
         grad = self.gradient_matrix.to_numpy() * 100
@@ -601,6 +604,21 @@ class Grid():
                 # Calculate emissions factor (energy consumed in MJ/km)
                 EF[grad==g] = (cf[0]*v**2 + cf[1]*v + cf[2] + cf[3]/v) / (cf[4]*v**2 + cf[5]*v + cf[6])
 
+            # Cold start emissions
+            if cold == True:
+                # Cold quotient as described from COPERT report
+                cold_quotient = 1.34 - (0.008 * self.depot_temp)
+
+                # Average trip length from depot
+                avg_len = np.mean(self.distance_matrix.iloc[1].values[1:]) / 1000
+
+                # beta parameter (fraction of journey with cold starts)
+                beta = 0.6474 - (0.02545*avg_len) - ((0.00974 - (0.000385*avg_len)) * self.depot_temp)
+
+                # Cold start only included for edges leaving depot
+                EF_cold = beta * EF[0] * (cold_quotient - 1)
+                EF[0] = EF[0] + EF_cold
+
             # Convert to g/km from tables in Ntziachristos COPERT report
             EF = (EF/4.31) * 101 * 3.169
 
@@ -613,6 +631,21 @@ class Grid():
 
             # Calculate EF with no corrections
             EF = (cf[0]*v**2 + cf[1]*v + cf[2] + cf[3]/v) / (cf[4]*v**2 + cf[5]*v + cf[6])
+
+            # Cold start emissions
+            if cold == True:
+                # Cold quotient as described from COPERT report
+                cold_quotient = 1.34 - (0.008 * self.depot_temp)
+
+                # Average trip length from depot
+                avg_len = np.mean(self.distance_matrix.iloc[1].values[1:]) / 1000
+
+                # beta parameter (fraction of journey with cold starts)
+                beta = 0.6474 - (0.02545*avg_len) - ((0.00974 - (0.000385*avg_len)) * self.depot_temp)
+
+                # Cold start only included for edges leaving depot
+                EF_cold = beta * EF[0] * (cold_quotient - 1)
+                EF[0] = EF[0] + EF_cold
 
             # Convert to g/km from tables in Ntziachristos COPERT report
             EF = (EF/4.31) * 101 * 3.169
@@ -647,6 +680,7 @@ class Grid():
 
         # Find total CO2 emitted over distance
         cost = EF * d
+        self.EF = EF
 
         # Add idling costs
         if idling == True:

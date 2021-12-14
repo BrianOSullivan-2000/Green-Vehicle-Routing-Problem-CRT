@@ -35,7 +35,7 @@ ds = pd.read_pickle("data/scats_sites_with_elev.pkl")
 ds = ds.loc[:, "Lat":"Elev"]
 
 # Vertices
-vdf = pd.read_pickle("data/distance_matrices/sparse_n20.pkl")
+vdf = pd.read_pickle("data/distance_matrices/county_n20.pkl")
 vpoints = list(vdf.columns)
 
 vpoints = np.round(np.array(vpoints), 4)
@@ -43,8 +43,8 @@ vpoints = np.round(np.array(vpoints), 4)
 
 # We can get the elevations directly from open elevation instead of interpolating (TODO: ask others how to do this)
 vdf = pd.DataFrame(vpoints, columns=['longitude', 'latitude'])
-vdf.to_pickle("data/instance_elevs/n20/n20_lat_long.pkl")
-create_elev_query_file("data/instance_elevs/n20/n20_lat_long.pkl", "data/instance_elevs/n20/n20_to_query.json")
+#vdf.to_pickle("data/instance_elevs/n20/n20_lat_long.pkl")
+#create_elev_query_file("data/instance_elevs/n20/n20_lat_long.pkl", "data/instance_elevs/n20/n20_to_query.json")
 
 
 # Clean data up a little
@@ -70,19 +70,20 @@ dublin.create_interpolation(epoints)
 dublin.create_df()
 
 # compute matrices for various edges
-dublin.compute_distance(mode="OSM", filename="data/distance_matrices/sparse_n20.pkl")
+dublin.compute_distance(mode="OSM", filename="data/distance_matrices/county_n20.pkl")
 dublin.compute_gradient()
 dublin.read_driving_cycle("data/WLTP.csv", h=4)
-dublin.compute_speed_profile(filename="data/speed_matrices/sparse_n20.pkl")
-dublin.create_geometries("data/geom_matrices/sparse_n20.pkl")
+dublin.compute_speed_profile(filename="data/speed_matrices/county_n20.pkl")
+dublin.create_geometries("data/geom_matrices/county_n20.pkl")
 dublin.read_weather(filename="data/weather_matrices/2016-01-28_4pm_tp.pkl")
 dublin.compute_weather_correction()
 
 dublin.read_skin_temp(filename="data/weather_matrices/2016-01-28_4pm_skt.pkl")
 
-#dublin.compute_cost(method="COPERT with meet")
+dublin.compute_cost(method="COPERT")
 
 np.set_printoptions(suppress=True)
+dublin.cost_matrix
 
 
 
