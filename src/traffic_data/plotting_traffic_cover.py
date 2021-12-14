@@ -43,6 +43,22 @@ def site_elev(row):
 def site_geom(row):
     return sites_geodf[sites_geodf["SiteID"] == row["Site"]]["geometry"].iloc[0]
 
+#full_traffic_data["Elev"] = np.zeros(full_traffic_data.shape[0])
+#full_traffic_data["lon"] = np.zeros(full_traffic_data.shape[0])
+#full_traffic_data["lat"] = np.zeros(full_traffic_data.shape[0])
+#full_traffic_data["geometry"] = np.zeros(full_traffic_data.shape[0])
+
+
+#for id in sites_geodf['SiteID'].values:
+
+#    elev = sites_geodf.loc[sites_geodf['SiteID'] == id, "Elev"]
+#    geometry = sites_geodf.loc[sites_geodf['SiteID'] == id, "geometry"]
+#    x, y = geometry.x, geometry.y
+
+#    full_traffic_data.loc[full_traffic_data["Site"] == id, 'Elev'] = elev
+#    full_traffic_data.loc[full_traffic_data["Site"] == id, 'lon'] = x
+#    full_traffic_data.loc[full_traffic_data["Site"] == id, 'lat'] = y
+
 
 # assign matching elev
 full_traffic_data["Elev"] = full_traffic_data.apply(site_elev, axis=1)
@@ -130,4 +146,3 @@ our_interpolator([ [ 692899.19445525, 5923903.80728167]])
 
 # TODO fix issue with clip
 # TODO wrap into function which takes day and time args
-
