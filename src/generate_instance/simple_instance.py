@@ -58,29 +58,34 @@ ds = ds[["Long", "Lat", "Elev"]]
 
 
 # round values to grid values
-# TODO: investigate if ok
 epoints = np.round(ds.to_numpy(), 4)
 
 # add points to grid
 dublin.add_elevation_points(epoints)
 dublin.add_vertices(vpoints)
-dublin.create_interpolation(epoints)
+#dublin.create_interpolation(epoints)
 
 # create df for grid
 dublin.create_df()
 
 # compute matrices for various edges
 dublin.compute_distance(mode="OSM", filename="data/distance_matrices/county_n20.pkl")
-dublin.compute_gradient()
+#dublin.compute_gradient()
 dublin.read_driving_cycle("data/WLTP.csv", h=4)
 dublin.compute_speed_profile(filename="data/speed_matrices/county_n20.pkl")
 dublin.create_geometries("data/geom_matrices/county_n20.pkl")
+
+dublin.compute_traffic(filename="data/traffic_matrices/test.pkl")
+dublin.compute_level_of_service()
+
+# In[1]
+
 dublin.read_weather(filename="data/weather_matrices/2016-01-28_4pm_tp.pkl")
 dublin.compute_weather_correction()
-
 dublin.read_skin_temp(filename="data/weather_matrices/2016-01-28_4pm_skt.pkl")
 
-dublin.compute_cost(method="MEET")
+
+dublin.compute_cost(method="copert with meet")
 np.set_printoptions(suppress=True)
 
 dublin.cost_matrix

@@ -253,6 +253,28 @@ class Grid():
 
 
 
+    def read_driving_cycle(self, filename, h):
+        """ Read in driving cycle from .csv file. Used to read in WLTP,
+            but header is adjustable for potential use of other driving cycles.
+            Driving cycles saved as pandas DataFrames.
+
+            filename - path to driving cycle .csv file
+            h - line in .csv file to be used as header
+        """
+
+        # Read in driving cycle as net data and second-by-second data
+        self.dc_net = pd.read_csv(filename, header=h).iloc[:, 6:16].iloc[0:4]
+        self.dc_raw = pd.read_csv(filename, header=h).iloc[1:, 0:6]
+
+        # Divide driving cycle into different modes according to phase
+        self.dc_urban = self.dc_raw[self.dc_raw['Phase']=='Low']
+        self.dc_suburban = self.dc_raw[self.dc_raw['Phase']=='Middle']
+        self.dc_rural = self.dc_raw[self.dc_raw['Phase']=='High']
+        self.dc_highway = self.dc_raw[self.dc_raw['Phase']=='Extra-high']
+
+
+
+
     def read_weather(self, filename, h=0.005):
         """ Read in weather data as GeoDataFrame of points. A low-resolution grid
             is interpolated over the region of interest for the weather data.
@@ -390,28 +412,6 @@ class Grid():
 
 
 
-    def read_driving_cycle(self, filename, h):
-        """ Read in driving cycle from .csv file. Used to read in WLTP,
-            but header is adjustable for potential use of other driving cycles.
-            Driving cycles saved as pandas DataFrames.
-
-            filename - path to driving cycle .csv file
-            h - line in .csv file to be used as header
-        """
-
-        # Read in driving cycle as net data and second-by-second data
-        self.dc_net = pd.read_csv(filename, header=h).iloc[:, 6:16].iloc[0:4]
-        self.dc_raw = pd.read_csv(filename, header=h).iloc[1:, 0:6]
-
-        # Divide driving cycle into different modes according to phase
-        self.dc_urban = self.dc_raw[self.dc_raw['Phase']=='Low']
-        self.dc_suburban = self.dc_raw[self.dc_raw['Phase']=='Middle']
-        self.dc_rural = self.dc_raw[self.dc_raw['Phase']=='High']
-        self.dc_highway = self.dc_raw[self.dc_raw['Phase']=='Extra-high']
-
-
-
-
     def compute_weather_correction(self):
         """ This function gets the overall rainfall levels over the
             line geometry of each edge using the self.weather grid.
@@ -522,6 +522,119 @@ class Grid():
 
 
 
+
+    def compute_traffic(self, filename):
+            """ Traffic situations affect both average speed and stop time percentage.
+                Traffic levels are read from file and converted to Level of Service (LoS)
+                based on velocity along edge and vehicle count/hr.
+
+                filename - interpolated file (created in plotting_traffic_cover.py)
+            """
+
+            # Import Polygon function for rectangles
+            from shapely.geometry import Polygon
+
+            # Convert data to GeoDataFrame
+            self.traffic_levels = pd.read_pickle(filename)
+            geometry = gpd.points_from_xy(self.traffic_levels["longitude"].values,
+                                          self.traffic_levels["latitude"].values)
+            names = {'Traffic':self.traffic_levels["traffic"].values,
+                    'longitude':self.traffic_levels["longitude"].values,
+                    'latitude':self.traffic_levels["latitude"].values}
+
+            gdf = gpd.GeoDataFrame(pd.DataFrame(data=names), columns=['Traffic'],
+                                     geometry=geometry, crs={'init' : 'epsg:4326'})
+
+            # Grid step size and points, note step size is assumed equal in x and y
+            h = abs(np.unique(gdf['geometry'].x)[0] - np.unique(gdf['geometry'].x)[1])
+            x = np.arange(gdf['geometry'].x.values[0], gdf['geometry'].x.values[-1], h)
+            y = np.arange(gdf['geometry'].y.values[0], gdf['geometry'].y.values[-1], h)
+
+            # Find midpoints between all gridpoints of GeoDataFrame (These are the rectangle corners)
+            x_mid = np.arange(x[0] - (h/2), x[-1] + 2*(h/2), h)
+            y_mid = np.arange(y[0] - (h/2), y[-1] + 2*(h/2), h)
+
+            # Starting points and trackers for loops
+            x0, y0 = x_mid[0], y_mid[0]
+            x_step, y_step = x0, y0
+
+            # List of rectangles
+            recs = []
+
+            # Loop over longitude
+            for i in range(len(x) + 1):
+                # Reset latitude for each new longitude
+                y_step = y0
+
+                # Loop over latitude
+                for j in range(len(y) + 1):
+                    # Get all four corners of rectangle surrounding point
+                    recs.append([(x_step, y_step), (x_step+h, y_step), (x_step+h, y_step+h), (x_step, y_step+h)])
+
+                    # Move on to next rectangle by step size
+                    y_step += h
+                x_step += h
+
+
+            # Set rectangles as new geometry for GeoDataFrame
+            grid_geom = pd.Series(recs).apply(lambda x: Polygon(x))
+            gdf['geometry'] = grid_geom
+            self.traffic = gdf
+
+
+
+
+    def compute_level_of_service(self):
+        """ Level of service (LoS) determined along each edge according to speed
+            along edge and vehicle count. Proportion of each LoS is found along
+            each edge, which is then used to calculate average velocity and
+            stop time percentage as weighted averages.
+        """
+
+        # The velocities used to calculate LoS are the initial simplified
+        # average velocities taken from the WLTP driving cycle
+
+        # Read in shape of output matrix
+        self.level_of_service = self.geom_matrix.copy()
+        los_bins = np.array((0, 0))
+
+        # Iterate over each row of matrix
+        for index, row in self.geom_matrix.iterrows():
+
+            net_weights = []
+
+            # For each line in row
+            for line in row:
+                # Only compute if line exists
+                if line != 0:
+
+                    # Find all intersecting rectanges in weather grid
+                    inter_recs = self.traffic[self.traffic.crosses(line)]
+
+                    if inter_recs.shape[0] > 0:
+
+                        velocities = self.velocity_matrix.loc[[index]]
+                        col_index = row[row == line].index[0]
+                        vehicle_density = (np.array(inter_recs['Traffic'].values)  / velocities[col_index][0]) / 2
+
+
+                        # Get total length and length weights
+                        total_len, len_weights = line.length, []
+
+                        # find proportion of line within each intersecting rectangle
+                        for rec in inter_recs['geometry']:
+                            len_weights.append(rec.intersection(line).length / total_len)
+
+                        len_weights = np.array(len_weights)
+
+                        # Sum up contributions from each rectangle for final correction factor
+                        net_weights.append(np.sum(np.array(len_weights) * vehicle_density))
+
+            print(net_weights)
+
+
+
+
     def compute_cost(self, method="MEET", idling=True, load=True, rain=True, cold=True):
         """ Compute CO2 emitted along paths between all vertices using either
             MEET or COPERT methodologies. Represented as pandas DataFrame.
@@ -570,7 +683,7 @@ class Grid():
             # Base model
             EF = (429.51 - 7.8227*velocities + 0.0617*(velocities**2))
             EF[0] = EF[0] + EF_cold
-            
+
             # Slope correction factor coefficients
             cfs = self.MEETdf.loc[:, "A6":"Slope (%)"]
 

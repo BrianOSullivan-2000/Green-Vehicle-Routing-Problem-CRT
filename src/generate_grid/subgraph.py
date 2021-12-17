@@ -125,14 +125,20 @@ n2_ids = np.array(n2_ids)
 
 # Drop duplicate rows and clean dataframe to relevant columns
 
-# TODO: extract speed limits and come up with sensible way to report
-# speed limit in the final output
-
 eds = eds.drop_duplicates(subset=['node_start', 'node_end'], keep='first')
 
-eds = eds.loc[:, ['maxspeed','geometry', 'length', 'node_start', 'node_end']]
+eds = eds.loc[:, ['highway', 'maxspeed','geometry', 'length', 'node_start', 'node_end']]
 
 eds = eds[~eds['maxspeed'].isnull().values]
+
+
+def most_frequent(List):
+
+    # Return most elements of list, only do it if the element is a list though
+    if isinstance(List, list):
+        return max(set(List), key = List.count)
+    else:
+        return List
 
 
 # iterative process to remove each n=2 node (have to run this chunk a few times)
@@ -140,13 +146,16 @@ eds = eds[~eds['maxspeed'].isnull().values]
 truecount, del_ids = 0, []
 loops = 0
 
+
+id = n2_ids[0]
+
 while (truecount < len(n2_ids)) and (loops < 10):
 
     # various elements such as lengths, shapes and node ends for all new edges
     # are first save in lists, then added as pandas dataframe rows at the end
     n2_neighbours = np.empty((n2_ids.shape[0], 2))
     count = 0
-    lines, lens, ends = [], [], []
+    highways, lines, lens, ends = [], [], [], []
     del_idx = []
 
     # Loop through each node ID
@@ -172,12 +181,23 @@ while (truecount < len(n2_ids)) and (loops < 10):
                     n2_neighbours[count] = nodes
                     ends.append(nodes)
 
+                    # Get all the highway elements of the two neighbouring edges,
+                    # record them in the new combined edge
+                    highway = []
+                    for h in eds2['highway'].values:
+                        if isinstance(h, str):
+                            highway.append(h)
+                        else:
+                            for hh in h:
+                                highway.append(hh)
+                    highways.append(highway)
 
                     # Combine the geometries of both edges
                     line_1, line_2 = eds2.iloc[0]['geometry'], eds2.iloc[1]['geometry']
                     newline = geometry.MultiLineString([line_1, line_2])
                     newline = ops.linemerge(newline)
                     lines.append(newline)
+
 
                     # Sum the length of both edges
                     len1, len2 = eds2.iloc[0]['length'], eds2.iloc[1]['length']
@@ -217,13 +237,14 @@ while (truecount < len(n2_ids)) and (loops < 10):
             geom = lines
 
         # get data for new row and add to dataframe, drop old edges
-        new_rows = {'maxspeed':np.array(speed), 'length':np.array(lens), 'geometry':geom, 'node_start':np.array(ends)[:, 0], 'node_end':np.array(ends)[:, 1]}
+        new_rows = {'highway': highways, 'maxspeed':np.array(speed), 'length':np.array(lens), 'geometry':geom, 'node_start':np.array(ends)[:, 0], 'node_end':np.array(ends)[:, 1]}
         ndf = gpd.GeoDataFrame(data=new_rows)
         eds = eds.drop(del_idx)
 
         eds = eds.append(ndf, ignore_index=True)
 
-
+        # Our new edges have multiple highway entries, get the most common one and assign it
+        eds["highway"] = eds['highway'].apply(most_frequent)
 
 # Let's plot the results
 fig, ax = plt.subplots(1, 1, figsize=(10,10))
@@ -256,6 +277,8 @@ plt.ylim(lat_b)
 
 #plt.savefig("data/figures/Dublin_centre_raw.jpeg", dpi=300)
 print(eds.shape)
+np.unique(eds['highway'])
+
 plt.show()
 
 
@@ -283,7 +306,6 @@ for i in range(300):
 
     # Find all edges connected to node to be dropped
     drop_eds = eds[(eds['node_start']==nodeIDs[1]) | (eds['node_end']==nodeIDs[1])]
-    drop_eds['maxspeed']
 
     # Find all edges connected to node not to be dropped and corresponding ids
     alt_eds = eds[(eds['node_start']==nodeIDs[0]) | (eds['node_end']==nodeIDs[0])]
@@ -307,6 +329,7 @@ for i in range(300):
     len_list = list(drop_eds['length'])
     geom_list = list(drop_eds['geometry'])
     speed_list = list(drop_eds['maxspeed'])
+    highway_list = list(drop_eds['highway'])
 
     # edge index to be dropped
     drop_index = len_list.index(min(len_list))
@@ -315,6 +338,7 @@ for i in range(300):
     add_len = len_list.pop(drop_index)
     add_geom = geom_list.pop(drop_index)
     add_speed = speed_list.pop(drop_index)
+    drop_highway = highway_list.pop(drop_index)
 
     # Add this to kept edges
     len_list = np.array(len_list)[id_keep] + add_len
@@ -424,7 +448,7 @@ eds['end_coord'] = np.array(con_graph.edges)[:, 1]
 indices = np.arange(np.array(list(con_graph.nodes)).shape[0])
 
 # Pick random IDs and get their coordinates (for networkx)
-sample_ids = np.random.choice(indices, 20, replace=False)
+sample_ids = np.random.choice(indices, 50, replace=False)
 sample_coords = np.array(list(con_graph.nodes))[sample_ids]
 
 
@@ -438,8 +462,7 @@ for i in range(len(coord_list)):
 N = len(sample_coords)
 dists = np.zeros((N,N))
 distance_matrix = pd.DataFrame(data=dists, index=sample_ids, columns=sample_ids)
-speed_matrix =  distance_matrix.copy()
-geom_matrix = distance_matrix.copy()
+speed_matrix, geom_matrix, highway_matrix = distance_matrix.copy(), distance_matrix.copy(), distance_matrix.copy()
 
 # count for tracking
 count = 0
@@ -466,9 +489,6 @@ depot_coord, depot_point = sample_coords[0], sample_ids[0]
 # every node pair combination
 pairs = np.array(list(itertools.combinations(sample_coords, 2)))
 id_pairs = np.array(list(itertools.combinations(sample_ids, 2)))
-
-
-
 
 
 # loop through node pairs, find path and path_length for each
@@ -513,6 +533,15 @@ for i in range(len(pairs)):
         geom_matrix.loc[id_pair[0], id_pair[1]] = newline
 
 
+        highways = []
+        for i in range(len(path) - 1):
+
+            highways.append(eds[((eds['start_coord']==tuple(path[i])) | (eds['end_coord']==tuple(path[i]))) &
+                        ((eds['start_coord']==tuple(path[i+1])) | (eds['end_coord']==tuple(path[i+1])))]['highway'].values[0])
+
+
+        highway_matrix.loc[id_pair[0], id_pair[1]] = most_frequent(highways)
+
     # impromptu progress bar
     count += 1
     if count % 1000 == 0:
@@ -537,11 +566,12 @@ for i in range(geom_matrix.shape[0]):
 distance_matrix.index, distance_matrix.columns = coord_list, coord_list
 speed_matrix.index, speed_matrix.columns = coord_list, coord_list
 geom_matrix.index, geom_matrix.columns = coord_list, coord_list
+highway_matrix.index, highway_matrix.columns = coord_list, coord_list
 
-
-distance_matrix
+highway_matrix
 
 # Look at how sparse it is
-#distance_matrix.to_pickle("data/distance_matrices/county_n20.pkl")
-#speed_matrix.to_pickle("data/speed_matrices/county_n20.pkl")
-#geom_matrix.to_pickle("data/geom_matrices/county_n20.pkl")
+distance_matrix.to_pickle("data/distance_matrices/sparse_n50.pkl")
+speed_matrix.to_pickle("data/speed_matrices/sparse_n50.pkl")
+geom_matrix.to_pickle("data/geom_matrices/sparse_n50.pkl")
+highway_matrix.to_pickle("data/highway_matrices/sparse_n50.pkl")

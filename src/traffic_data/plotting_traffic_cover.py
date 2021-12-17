@@ -132,7 +132,7 @@ def write_traffic_file(filename, day_type, hour_in_day, num_neighbours, lon_b, l
     traffic_df = pd.DataFrame(data=data)
 
     # Interpolated data is slightly too large for github, cut it in half
-    traffic_df = traffic_df.iloc[::2, :]
+    #traffic_df = traffic_df.iloc[::2, :]
 
     # Save to data folder
     traffic_df.to_pickle("data/traffic_matrices/{}".format(filename))
@@ -141,10 +141,10 @@ def write_traffic_file(filename, day_type, hour_in_day, num_neighbours, lon_b, l
 # Bounding box and stepsize for grid
 lon_b = (-6.42, -6.10)
 lat_b = (53.25, 53.45)
-h = 0.0001
+h = 0.001
 
 # Save a default test file
-traffic = write_traffic_file("test.pkl", "WD", 9, 15, lon_b, lat_b, h)
+traffic = write_traffic_file("test.pkl", "WD", 9, 5, lon_b, lat_b, h)
 
 
 # In[1]
@@ -164,7 +164,7 @@ dub_df = dub_df.set_crs(epsg=4326)
 dub_df = dub_df[dub_df["NAME_TAG"]=="Dublin"]
 
 # Make GeoDataFrame smaller for performance
-gdf = gdf.iloc[::10, :]
+#gdf = gdf.iloc[::10, :]
 
 # Plotting
 fig, ax = plt.subplots(1, 1, figsize=(10,10))
