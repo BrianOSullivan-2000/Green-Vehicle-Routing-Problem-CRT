@@ -3,7 +3,6 @@ import numpy as np
 import geopandas as gpd
 import pandas as pd
 import matplotlib.pyplot as plt
-import scipy as sc
 from scipy.spatial import cKDTree, distance_matrix
 import math
 import utm
@@ -108,7 +107,7 @@ class Grid():
         grid_obs = np.stack((grid_obs_raw[0], grid_obs_raw[1]), axis=1)
 
         # Object for querying nearest points
-        tree = sc.spatial.cKDTree(np.array(obs))
+        tree = cKDTree(np.array(obs))
 
         # Each point in grid determines k=10 nearest points from input data
         # d is separation distances and inds are indexes of corresponding points
@@ -142,6 +141,10 @@ class Grid():
 
         # Create DataFrame
         self.df = pd.DataFrame(data=data)
+
+        # Order vertices
+        self.df.loc[self.df['is_vertice'] != 0, 'is_vertice'] = np.arange(1,21)
+        self.depot = self.df.loc[self.df['is_vertice'] == 1]
 
 
 
@@ -272,6 +275,199 @@ class Grid():
 
 
 
+    def read_weather(self, filename, h=0.005):
+        """ Read in weather data as GeoDataFrame of points. A low-resolution grid
+            is interpolated over the region of interest for the weather data.
+            Evenly spaced rectangles are computed about each point with the
+            weather variables assigned. (Currently only total precipitation)
+
+            filename - path to weather data, rainfall units assumed as m/hour
+                       with label 'tp' (Total Precipitation),
+                       coordinate columns assumed "longitude" and "latitude",
+                       file type is pickle (.pkl)
+
+            h - step size of grid to interpolate
+        """
+
+        # Import Polygon function for rectangles
+        from shapely.geometry import Polygon
+
+        # Read in file and convert to mm
+        self.weather = pd.read_pickle(filename)
+        self.weather.loc[:, 'tp'] = self.weather.loc[:, 'tp'] * 1000
+
+        lons, lats, prec = self.weather['longitude'], self.weather['latitude'], self.weather['tp']
+
+        # Create gridpoints for interpolation array
+        x, y = np.arange(self.x[0], self.x[-1], h), np.arange(self.y[0], self.y[-1], h)
+        yy, xx = np.meshgrid(y, x)
+
+        # Convert both input points and gridpoints to grid using UTM projection
+        obs_raw = np.asarray(utm.from_latlon(np.asarray(lons), np.asarray(lats))[0:2])
+        obs = np.stack((obs_raw[0], obs_raw[1]), axis=1)
+        grid_obs_raw = np.asarray(utm.from_latlon(xx.ravel(), yy.ravel())[0:2])
+        grid_obs = np.stack((grid_obs_raw[0], grid_obs_raw[1]), axis=1)
+
+        # IDW2 interpolation
+        tree = cKDTree(np.array(obs))
+
+        # Get distances, indices, compute weights, find final weighted averages
+        d, inds = tree.query(np.array(grid_obs), k=7)
+        w = 1.0 / d**2
+        weighted_averages = np.sum(w * prec.values[inds], axis=1) / np.sum(w, axis=1)
+
+        # Total precipitation array
+        tp = np.reshape(weighted_averages, (len(x), len(y)))
+
+        # Geometry of interpolated array as points, then gather data
+        geometry = gpd.points_from_xy(xx.flatten(), yy.flatten())
+        names = {'Precipitation':tp.flatten(), 'longitude':xx.flatten(), 'latitude':yy.flatten()}
+
+        # Finally, interpolated array is converted to GeoDataFrame
+        gdf = gpd.GeoDataFrame(pd.DataFrame(data=names), columns=['Precipitation'],
+                                 geometry=geometry, crs={'init' : 'epsg:4326'})
+
+
+        # Find midpoints between all gridpoints of GeoDataFrame (These are the rectangle corners)
+        x_mid, y_mid = np.arange(x[0] - (h/2), x[-1] + 2*(h/2), h), np.arange(y[0] - (h/2), y[-1] + 2*(h/2), h)
+
+        # Starting points and trackers for loops
+        x0, y0 = x_mid[0], y_mid[0]
+        x_step, y_step = x0, y0
+
+        # List of rectangles
+        recs = []
+
+        # Loop over longitude
+        for i in range(len(x)):
+            # Reset latitude for each new longitude
+            y_step = y0
+
+            # Loop over latitude
+            for j in range(len(y)):
+                # Get all four corners of rectangle surrounding point
+                recs.append([(x_step, y_step), (x_step+h, y_step), (x_step+h, y_step+h), (x_step, y_step+h)])
+
+                # Move on to next rectangle by step size
+                y_step += h
+            x_step += h
+
+
+        # Set rectangles as new geometry for GeoDataFrame
+        grid_geom = pd.Series(recs).apply(lambda x: Polygon(x))
+        gdf['geometry'] = grid_geom
+
+
+        # Bin values according to rainfall ranges
+        # Two different options, m50 study by De Courcy et al
+        # or London study by Tsapakis et al
+        #m50_bins = np.array((0, 0.0005, 0.5, 4, 50))
+        london_bins = np.array((0, 0.0005, 0.2, 6, 50))
+
+        #m50_vals = np.array((1, 1-0.025, 1-0.053, 1-0.155))
+        london_vals = np.array((1, 1-0.021, 1-0.038, 1-0.06))
+
+        # Going with london metrics for now
+        gdf['Rain_Correction'] = np.digitize(gdf['Precipitation'], london_bins)
+        gdf['Rain_Correction'] = np.array([london_vals[idx] for idx in gdf['Rain_Correction']])
+
+        # Final output of GeoDataFrame
+        self.weather = gdf
+
+
+
+
+    def read_skin_temp(self, filename):
+        """ Interpolate skin temperature for grid. Temperature is
+            only interpolated at depot location for cold starts.
+
+            filename - path to average hourly temperature data in degrees
+                       Celsius with label 'skt' (Skin Temperature),
+                       coordinate columns assumed "longitude" and "latitude",
+                       file type is pickle (.pkl)
+        """
+
+        # Read in file
+        self.temp = pd.read_pickle(filename)
+        self.temp.loc[:, 'skt'] = self.temp.loc[:, 'skt'] - 273.15
+
+        # Get depot location and temperature points
+        depot = self.depot.iloc[:, 0:2].values[0]
+        lons, lats, skt = self.temp['longitude'], self.temp['latitude'], self.temp['skt']
+
+        # Convert both input points and gridpoints to grid using UTM projection
+        obs_raw = np.asarray(utm.from_latlon(np.asarray(lons), np.asarray(lats))[0:2])
+        obs = np.stack((obs_raw[0], obs_raw[1]), axis=1)
+        grid_obs_raw = np.asarray(utm.from_latlon(depot[0], depot[1]))
+        grid_obs = np.stack((grid_obs_raw[0], grid_obs_raw[1]))
+
+        # IDW2 interpolation
+        tree = cKDTree(np.array(obs))
+
+        # Get distances, indices, compute weights, find final weighted averages
+        d, inds = tree.query(np.array(grid_obs), k=len(skt))
+        w = 1.0 / d**2
+        self.depot_temp = np.sum(w * skt.values[inds]) / np.sum(w)
+
+
+
+
+    def compute_weather_correction(self):
+        """ This function gets the overall rainfall levels over the
+            line geometry of each edge using the self.weather grid.
+
+            Output is saved as velocity correction factor along
+            each edge caused by rainfall.
+        """
+
+        # Read in shape of output matrix
+        self.weather_correction_matrix = self.geom_matrix.copy()
+
+        # Iterate over each row of matrix
+        for index, row in self.geom_matrix.iterrows():
+
+            # list of weights for each row
+            net_weights = []
+
+            # For each line in row
+            for line in row:
+                # Only compute if line exists
+                if line != 0:
+
+                    # Find all intersecting rectanges in weather grid
+                    inter_recs = self.weather[self.weather.crosses(line)]
+
+                    if inter_recs.shape[0] > 0:
+                        # Only bother computing if there is variance along line
+                        if not (inter_recs['Rain_Correction']==inter_recs['Rain_Correction'].iloc[0]).all():
+
+                            # Get total length and length weights
+                            total_len, len_weights = line.length, []
+
+                            # find proportion of line within each intersecting rectangle
+                            for rec in inter_recs['geometry']:
+                                len_weights.append(rec.intersection(line).length / total_len)
+
+                            # Sum up contributions from each rectangle for final correction factor
+                            net_weights.append(np.sum(np.array(len_weights) * inter_recs['Rain_Correction']))
+
+                        # Correction factor is constant, no need for computation
+                        else:
+                            net_weights.append(inter_recs['Rain_Correction'].iloc[0])
+
+                    else:
+                        net_weights.append(0)
+
+                # Include zeros to maintain shape of matrix
+                else:
+                    net_weights.append(0)
+
+            # Adjust row with rainfall correction factors
+            self.weather_correction_matrix[index] = net_weights
+
+
+
+
     def compute_speed_profile(self, filename=None):
         """ Compute average velocity along paths between all vertices.
             Represented as pandas DataFrame. Average velocity currently accessed
@@ -309,6 +505,7 @@ class Grid():
 
             # Create bins using midpoint between average velocities in driving cycles
             bins = [(velocity[i] + velocity[i+1])/2 for i in range(len(velocity)-1)]
+            bins[0] = 0
             bins.append(200)
 
             # Read speed matrix and save dataframe shape, indexes and columns
@@ -325,7 +522,120 @@ class Grid():
 
 
 
-    def compute_cost(self, method="MEET", idling=True, load=False):
+
+    def compute_traffic(self, filename):
+            """ Traffic situations affect both average speed and stop time percentage.
+                Traffic levels are read from file and converted to Level of Service (LoS)
+                based on velocity along edge and vehicle count/hr.
+
+                filename - interpolated file (created in plotting_traffic_cover.py)
+            """
+
+            # Import Polygon function for rectangles
+            from shapely.geometry import Polygon
+
+            # Convert data to GeoDataFrame
+            self.traffic_levels = pd.read_pickle(filename)
+            geometry = gpd.points_from_xy(self.traffic_levels["longitude"].values,
+                                          self.traffic_levels["latitude"].values)
+            names = {'Traffic':self.traffic_levels["traffic"].values,
+                    'longitude':self.traffic_levels["longitude"].values,
+                    'latitude':self.traffic_levels["latitude"].values}
+
+            gdf = gpd.GeoDataFrame(pd.DataFrame(data=names), columns=['Traffic'],
+                                     geometry=geometry, crs={'init' : 'epsg:4326'})
+
+            # Grid step size and points, note step size is assumed equal in x and y
+            h = abs(np.unique(gdf['geometry'].x)[0] - np.unique(gdf['geometry'].x)[1])
+            x = np.arange(gdf['geometry'].x.values[0], gdf['geometry'].x.values[-1], h)
+            y = np.arange(gdf['geometry'].y.values[0], gdf['geometry'].y.values[-1], h)
+
+            # Find midpoints between all gridpoints of GeoDataFrame (These are the rectangle corners)
+            x_mid = np.arange(x[0] - (h/2), x[-1] + 2*(h/2), h)
+            y_mid = np.arange(y[0] - (h/2), y[-1] + 2*(h/2), h)
+
+            # Starting points and trackers for loops
+            x0, y0 = x_mid[0], y_mid[0]
+            x_step, y_step = x0, y0
+
+            # List of rectangles
+            recs = []
+
+            # Loop over longitude
+            for i in range(len(x) + 1):
+                # Reset latitude for each new longitude
+                y_step = y0
+
+                # Loop over latitude
+                for j in range(len(y) + 1):
+                    # Get all four corners of rectangle surrounding point
+                    recs.append([(x_step, y_step), (x_step+h, y_step), (x_step+h, y_step+h), (x_step, y_step+h)])
+
+                    # Move on to next rectangle by step size
+                    y_step += h
+                x_step += h
+
+
+            # Set rectangles as new geometry for GeoDataFrame
+            grid_geom = pd.Series(recs).apply(lambda x: Polygon(x))
+            gdf['geometry'] = grid_geom
+            self.traffic = gdf
+
+
+
+
+    def compute_level_of_service(self):
+        """ Level of service (LoS) determined along each edge according to speed
+            along edge and vehicle count. Proportion of each LoS is found along
+            each edge, which is then used to calculate average velocity and
+            stop time percentage as weighted averages.
+        """
+
+        # The velocities used to calculate LoS are the initial simplified
+        # average velocities taken from the WLTP driving cycle
+
+        # Read in shape of output matrix
+        self.level_of_service = self.geom_matrix.copy()
+        los_bins = np.array((0, 0))
+
+        # Iterate over each row of matrix
+        for index, row in self.geom_matrix.iterrows():
+
+            net_weights = []
+
+            # For each line in row
+            for line in row:
+                # Only compute if line exists
+                if line != 0:
+
+                    # Find all intersecting rectanges in weather grid
+                    inter_recs = self.traffic[self.traffic.crosses(line)]
+
+                    if inter_recs.shape[0] > 0:
+
+                        velocities = self.velocity_matrix.loc[[index]]
+                        col_index = row[row == line].index[0]
+                        vehicle_density = (np.array(inter_recs['Traffic'].values)  / velocities[col_index][0]) / 2
+
+
+                        # Get total length and length weights
+                        total_len, len_weights = line.length, []
+
+                        # find proportion of line within each intersecting rectangle
+                        for rec in inter_recs['geometry']:
+                            len_weights.append(rec.intersection(line).length / total_len)
+
+                        len_weights = np.array(len_weights)
+
+                        # Sum up contributions from each rectangle for final correction factor
+                        net_weights.append(np.sum(np.array(len_weights) * vehicle_density))
+
+            print(net_weights)
+
+
+
+
+    def compute_cost(self, method="MEET", idling=True, load=True, rain=True, cold=True):
         """ Compute CO2 emitted along paths between all vertices using either
             MEET or COPERT methodologies. Represented as pandas DataFrame.
             Model coefficients from MEET or COPERT files previously read.
@@ -342,6 +652,10 @@ class Grid():
         d = self.distance_matrix.to_numpy() / 1000
         velocities = self.velocity_matrix.to_numpy()
 
+        # Adjust velocities by rainfall correction factors
+        if rain == True:
+            velocities = velocities * self.weather_correction_matrix.to_numpy()
+
         # Round gradient matrix to values in [-6, -4, -2, 0, 2, 4, 6]
         grad = self.gradient_matrix.to_numpy() * 100
         grad[grad>6] = 6
@@ -351,11 +665,24 @@ class Grid():
         # MEET methodology
         if method.upper() == "MEET":
 
+            if cold == True:
+
+                temp_cf = (-0.0458 * self.depot_temp) + 1.9163
+                cold_distance = (0.29 * velocities[0]) - 0.05
+                beta = self.distance_matrix.iloc[0] / cold_distance
+                speed_cf, a, omega = 1, 3.95, 153.36
+
+                distance_cf = (1 - np.exp(-1*a*beta)) / (1 - np.exp(-1*a))
+
+                EF_cold = omega * (speed_cf + temp_cf - 1) * distance_cf
+
+
             # Available gradients in model
             grads = [-6, -4, -2, 2, 4, 6]
 
             # Base model
             EF = (429.51 - 7.8227*velocities + 0.0617*(velocities**2))
+            EF[0] = EF[0] + EF_cold
 
             # Slope correction factor coefficients
             cfs = self.MEETdf.loc[:, "A6":"Slope (%)"]
@@ -403,6 +730,21 @@ class Grid():
                 # Calculate emissions factor (energy consumed in MJ/km)
                 EF[grad==g] = (cf[0]*v**2 + cf[1]*v + cf[2] + cf[3]/v) / (cf[4]*v**2 + cf[5]*v + cf[6])
 
+            # Cold start emissions
+            if cold == True:
+                # Cold quotient as described from COPERT report
+                cold_quotient = 1.34 - (0.008 * self.depot_temp)
+
+                # Average trip length from depot
+                avg_len = np.mean(self.distance_matrix.iloc[1].values[1:]) / 1000
+
+                # beta parameter (fraction of journey with cold starts)
+                beta = 0.6474 - (0.02545*avg_len) - ((0.00974 - (0.000385*avg_len)) * self.depot_temp)
+
+                # Cold start only included for edges leaving depot
+                EF_cold = beta * EF[0] * (cold_quotient - 1)
+                EF[0] = EF[0] + EF_cold
+
             # Convert to g/km from tables in Ntziachristos COPERT report
             EF = (EF/4.31) * 101 * 3.169
 
@@ -415,6 +757,21 @@ class Grid():
 
             # Calculate EF with no corrections
             EF = (cf[0]*v**2 + cf[1]*v + cf[2] + cf[3]/v) / (cf[4]*v**2 + cf[5]*v + cf[6])
+
+            # Cold start emissions
+            if cold == True:
+                # Cold quotient as described from COPERT report
+                cold_quotient = 1.34 - (0.008 * self.depot_temp)
+
+                # Average trip length from depot
+                avg_len = np.mean(self.distance_matrix.iloc[1].values[1:]) / 1000
+
+                # beta parameter (fraction of journey with cold starts)
+                beta = 0.6474 - (0.02545*avg_len) - ((0.00974 - (0.000385*avg_len)) * self.depot_temp)
+
+                # Cold start only included for edges leaving depot
+                EF_cold = beta * EF[0] * (cold_quotient - 1)
+                EF[0] = EF[0] + EF_cold
 
             # Convert to g/km from tables in Ntziachristos COPERT report
             EF = (EF/4.31) * 101 * 3.169
@@ -449,12 +806,16 @@ class Grid():
 
         # Find total CO2 emitted over distance
         cost = EF * d
+        self.EF = EF
 
         # Add idling costs
         if idling == True:
 
-            # Average velocities from driving cycle
-            velocity = self.dc_net['v_ave without stops (km/h)']
+            # Average velocities from driving cycle, add lower bound for binning
+            velocity = list(self.dc_net['v_ave without stops (km/h)'])
+
+            # Create bins using midpoint between average velocities
+            bins = [(velocity[i] + velocity[i+1])/2 for i in range(len(velocity)-1)]
 
             # Find travel time along each edge without stops in seconds
             travel_times = (d / velocities) * 3600
@@ -462,17 +823,20 @@ class Grid():
             # Percentage of stoppage time according to speeds from driving cycles
             stop_percentages = [float(p[0:-1]) for p in self.dc_net['p_stop (%)']]
 
-            # TODO: Once weather correction factors have been applied to velocity profile
-            # matrix, will need a way to match each velocity to closest one available in WLTP
-            
+            v_binned = np.array([velocity[idx] for idx in np.digitize(velocities.flatten(), bins)])
+            v_binned = np.reshape(v_binned, velocities.shape)
+            v_binned[velocities==0] = 0
+
             # For each percentage
             for i in range(len(velocity)):
 
                 # Compute total time stopped as percentage of total time travelling
-                travel_times[velocities==velocity[i]] = (stop_percentages[i] / 100) * travel_times[velocities==velocity[i]]
+                travel_times[v_binned==velocity[i]] = (stop_percentages[i] / 100) * travel_times[v_binned==velocity[i]]
+
 
             # Add costs from idling (0.4617g/s CO2 emitted while idling)
             cost = cost + travel_times * 0.4617
+            self.travel_times = travel_times
 
 
         # Round to nearest gram, make dataframe

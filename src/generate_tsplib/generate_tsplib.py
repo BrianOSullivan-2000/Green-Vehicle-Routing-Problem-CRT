@@ -32,14 +32,14 @@ def generate_tsplib(filename, instance_name, capacity, edge_weight_type, edge_we
         # display_data_type left unspecified - change if needed
         print("NODE_COORD_SECTION", file=f)
         for i in range(len(nodes)):
-            print(i+1, nodes[i][0], nodes[i][1], file=f)
+            print(i, nodes[i][0], nodes[i][1], file=f)
         print("DEPOT_SECTION:", file=f)
         for i in range(len(depot_index)):
             print(depot_index[i], file=f)
         print(-1, file=f)
         print("DEMAND_SECTION", file=f)
         for i in range(len(nodes)):
-            print(str(i+1), str(demand[i]), file=f)
+            print(str(i), str(demand[i]), file=f)
         # fixed_edges_section left unspecified
         # display_data_section left unspecified
         # node_weight_section left unspecified
@@ -49,7 +49,7 @@ def generate_tsplib(filename, instance_name, capacity, edge_weight_type, edge_we
         # allows for two specifications
         if edge_weight_format == "WEIGHT_LIST":
             for i in range(len(edge_weights)):
-                print(i+1, edge_weights[i][0], edge_weights[i][1], edge_weights[i][2], file=f)
+                print(i, edge_weights[i][0], edge_weights[i][1], edge_weights[i][2], file=f)
         if edge_weight_format == "FULL_MATRIX":
             with np.printoptions(threshold=np.inf):
                 print(edge_weights, file=f)

@@ -31,6 +31,10 @@ nds, eds = nodes, edges
 lon_b = (-6.32, -6.21)
 lat_b = (53.325, 53.365)
 
+# Bigger bounding box
+#lon_b = (-6.4759, -6.0843)
+#lat_b = (53.2294, 53.4598)
+
 
 # Drop nodes outside bounding box
 nds = nds.drop(nds[nds['x']==0].index)
@@ -52,9 +56,11 @@ eds = eds[eds.within(bounding_box)]
 types = np.unique(eds.dropna(subset=['highway'])['highway'].values)
 
 # check the indices
+# We want to generally go with motorway, trunk, primary, secondary, and all the corresponding link roads
 types
 
 # Only have network of main roads
+#main_roads = types[[3, 4, 6, 7, 9, 10, 15, 16]]
 main_roads = types[[2, 3, 5, 6, 8, 9, 10, 11]]
 eds = eds[eds['highway'].isin(main_roads)]
 
@@ -119,14 +125,20 @@ n2_ids = np.array(n2_ids)
 
 # Drop duplicate rows and clean dataframe to relevant columns
 
-# TODO: extract speed limits and come up with sensible way to report
-# speed limit in the final output
-
 eds = eds.drop_duplicates(subset=['node_start', 'node_end'], keep='first')
 
-eds = eds.loc[:, ['maxspeed','geometry', 'length', 'node_start', 'node_end']]
+eds = eds.loc[:, ['highway', 'maxspeed','geometry', 'length', 'node_start', 'node_end']]
 
 eds = eds[~eds['maxspeed'].isnull().values]
+eds['maxspeed'] = eds['maxspeed'].values.astype(float)
+
+def most_frequent(List):
+
+    # Return most elements of list, only do it if the element is a list though
+    if isinstance(List, list):
+        return max(set(List), key = List.count)
+    else:
+        return List
 
 
 # iterative process to remove each n=2 node (have to run this chunk a few times)
@@ -134,13 +146,16 @@ eds = eds[~eds['maxspeed'].isnull().values]
 truecount, del_ids = 0, []
 loops = 0
 
+
+id = n2_ids[0]
+
 while (truecount < len(n2_ids)) and (loops < 10):
 
     # various elements such as lengths, shapes and node ends for all new edges
     # are first save in lists, then added as pandas dataframe rows at the end
     n2_neighbours = np.empty((n2_ids.shape[0], 2))
     count = 0
-    lines, lens, ends = [], [], []
+    highways, lines, lens, ends = [], [], [], []
     del_idx = []
 
     # Loop through each node ID
@@ -166,12 +181,23 @@ while (truecount < len(n2_ids)) and (loops < 10):
                     n2_neighbours[count] = nodes
                     ends.append(nodes)
 
+                    # Get all the highway elements of the two neighbouring edges,
+                    # record them in the new combined edge
+                    highway = []
+                    for h in eds2['highway'].values:
+                        if isinstance(h, str):
+                            highway.append(h)
+                        else:
+                            for hh in h:
+                                highway.append(hh)
+                    highways.append(highway)
 
                     # Combine the geometries of both edges
                     line_1, line_2 = eds2.iloc[0]['geometry'], eds2.iloc[1]['geometry']
                     newline = geometry.MultiLineString([line_1, line_2])
                     newline = ops.linemerge(newline)
                     lines.append(newline)
+
 
                     # Sum the length of both edges
                     len1, len2 = eds2.iloc[0]['length'], eds2.iloc[1]['length']
@@ -211,13 +237,14 @@ while (truecount < len(n2_ids)) and (loops < 10):
             geom = lines
 
         # get data for new row and add to dataframe, drop old edges
-        new_rows = {'maxspeed':np.array(speed), 'length':np.array(lens), 'geometry':geom, 'node_start':np.array(ends)[:, 0], 'node_end':np.array(ends)[:, 1]}
+        new_rows = {'highway': highways, 'maxspeed':np.array(speed), 'length':np.array(lens), 'geometry':geom, 'node_start':np.array(ends)[:, 0], 'node_end':np.array(ends)[:, 1]}
         ndf = gpd.GeoDataFrame(data=new_rows)
         eds = eds.drop(del_idx)
 
         eds = eds.append(ndf, ignore_index=True)
 
-
+        # Our new edges have multiple highway entries, get the most common one and assign it
+        eds["highway"] = eds['highway'].apply(most_frequent)
 
 # Let's plot the results
 fig, ax = plt.subplots(1, 1, figsize=(10,10))
@@ -233,7 +260,10 @@ nds, eds = momepy.nx_to_gdf(GG)
 eds.plot(ax=ax, alpha=0.2, color="k", linewidth=2, zorder=3)
 nds.plot(ax=ax, color='crimson', markersize=7)
 
-# Bounds for limits
+lon_b = (-6.4759, -6.0843)
+lat_b = (53.2294, 53.4598)
+
+# Dublin Circular North and South
 lon_b = (-6.32, -6.21)
 lat_b = (53.325, 53.365)
 
@@ -247,6 +277,7 @@ plt.ylim(lat_b)
 
 #plt.savefig("data/figures/Dublin_centre_raw.jpeg", dpi=300)
 print(eds.shape)
+
 plt.show()
 
 
@@ -259,9 +290,10 @@ plt.show()
 con_graph = GG.copy()
 nds, eds = momepy.nx_to_gdf(GG)
 geom_err = 0
+count = 0
 
 # Remove 250 shortest edges
-for i in range(250):
+for i in range(300):
 
     # Get smallest edge and get node coordinates
     edge = eds[eds['length'] == np.min(eds['length'].values)]
@@ -273,7 +305,6 @@ for i in range(250):
 
     # Find all edges connected to node to be dropped
     drop_eds = eds[(eds['node_start']==nodeIDs[1]) | (eds['node_end']==nodeIDs[1])]
-    drop_eds['maxspeed']
 
     # Find all edges connected to node not to be dropped and corresponding ids
     alt_eds = eds[(eds['node_start']==nodeIDs[0]) | (eds['node_end']==nodeIDs[0])]
@@ -297,6 +328,7 @@ for i in range(250):
     len_list = list(drop_eds['length'])
     geom_list = list(drop_eds['geometry'])
     speed_list = list(drop_eds['maxspeed'])
+    highway_list = list(drop_eds['highway'])
 
     # edge index to be dropped
     drop_index = len_list.index(min(len_list))
@@ -305,6 +337,7 @@ for i in range(250):
     add_len = len_list.pop(drop_index)
     add_geom = geom_list.pop(drop_index)
     add_speed = speed_list.pop(drop_index)
+    drop_highway = highway_list.pop(drop_index)
 
     # Add this to kept edges
     len_list = np.array(len_list)[id_keep] + add_len
@@ -322,6 +355,7 @@ for i in range(250):
 
     # Adjust speed accordingly
     speed_list = np.array(speed_list).astype(float)[id_keep] * ((len_list-add_len)/len_list)
+    speed_list = speed_list + ((add_speed * add_len) / len_list)
 
     # Contract the two nodes (The main step)
     con_graph = nx.contracted_nodes(con_graph, nodes[0], nodes[1], self_loops=False)
@@ -354,11 +388,18 @@ for i in range(250):
         finally:
             g_idx += 1
 
+
+
+    # impromptu progress bar
+    count += 1
+    if count % 100 == 0:
+        print(count // 100)
+
     # Another reset to prepare for next iteration
     con_graph = momepy.gdf_to_nx(eds)
     nds, eds = momepy.nx_to_gdf(con_graph)
 
-
+print(eds.shape)
 
 # In[1]
 
@@ -370,24 +411,28 @@ dub_df.plot(ax=ax, color="c", edgecolor="k", alpha=0.4, zorder=2)
 
 # Plot edges and nodes
 eds.plot(ax=ax, alpha=1, color="silver", linewidth=2, zorder=1)
-nds.plot(ax=ax, color='crimson', markersize=15)
+nds.plot(ax=ax, color='crimson', markersize=10)
 
-# Bounds for limits
+
+lon_b = (-6.4759, -6.0843)
+lat_b = (53.2294, 53.4598)
+
+# Dublin Circular North and South
 lon_b = (-6.32, -6.21)
 lat_b = (53.325, 53.365)
-
 
 # O'Connell Bridge
 #lon_b = (-6.265, -6.25)
 #lat_b = (53.343, 53.35)
-#lon_b = (-6.2585, -6.2580)
-#lat_b = (53.341, 53.342)
+#lon_b = (-6.389, -6.385)
+#lat_b = (53.410, 53.415)
 
 
 
 # Plot
 plt.xlim(lon_b)
 plt.ylim(lat_b)
+print(eds.shape)
 #plt.savefig("data/figures/dublin_clean.jpeg", dpi=300)
 plt.show()
 
@@ -416,11 +461,29 @@ for i in range(len(coord_list)):
 N = len(sample_coords)
 dists = np.zeros((N,N))
 distance_matrix = pd.DataFrame(data=dists, index=sample_ids, columns=sample_ids)
-speed_matrix =  distance_matrix.copy()
-geom_matrix = distance_matrix.copy()
+speed_matrix, geom_matrix, highway_matrix = distance_matrix.copy(), distance_matrix.copy(), distance_matrix.copy()
 
 # count for tracking
 count = 0
+
+# Get depot_coord and id
+from scipy.spatial import distance
+
+# Function to find closest point to another point from list of points
+def closest_node(node, nodes):
+    closest_index = distance.cdist([node], nodes).argmin()
+    return nodes[closest_index]
+
+# Set a corner for depot (for example bottom left, top right)
+corner = (np.mean(sample_coords[:, 0]), np.mean(sample_coords[:, 1]))
+
+# Get depot coordinates and position in current points
+depot = closest_node(corner, sample_coords)
+d_idx = np.where(sample_coords == depot)[0][0]
+
+# Set depot to beginning of sample points
+sample_coords[[0, d_idx]] = sample_coords[[d_idx, 0]]
+depot_coord, depot_point = sample_coords[0], sample_ids[0]
 
 # every node pair combination
 pairs = np.array(list(itertools.combinations(sample_coords, 2)))
@@ -439,38 +502,35 @@ for i in range(len(pairs)):
     path = np.array(nx.shortest_path(con_graph, tuple(nodes[0]), tuple(nodes[1]), weight='length'))
 
     # Only include path if none of the other selected nodes lie along it
-    if len([i for i in path if i in sample_coords]) == 2:
-
-        # get path length, add to matrix, count
-        path_length = nx.shortest_path_length(con_graph, tuple(pair[0]), tuple(pair[1]), weight='length')
-        distance_matrix.loc[id_pair[0], id_pair[1]] = path_length
+    if (depot_coord in pair) or (len([i for i in path if i in sample_coords]) == 2):
 
         # read speeds from each edge along path
-        speeds = []
-        for i in range(len(path) - 1):
+        lengths, speeds, geoms, highways = [], [], [], []
 
-            speeds.append(float(eds[((eds['start_coord']==tuple(path[i])) | (eds['end_coord']==tuple(path[i]))) &
-                         ((eds['start_coord']==tuple(path[i + 1])) | (eds['end_coord']==tuple(path[i + 1])))]['maxspeed'].values[0]))
+        for j in range(len(path) - 1):
+
+            row = eds[((eds['start_coord']==tuple(path[j])) | (eds['end_coord']==tuple(path[j]))) &
+                         ((eds['start_coord']==tuple(path[j + 1])) | (eds['end_coord']==tuple(path[j + 1])))]
+
+            lengths.append(row['length'].values[0])
+            speeds.append(row['maxspeed'].values[0])
+            geoms.append(row['geometry'].values[0])
+            highways.append(row['highway'].values[0])
+
+        # get path length, add to matrix
+        distance_matrix.loc[id_pair[0], id_pair[1]] = np.sum(np.array(lengths))
 
         # record average speed for path
-        avg_speed = np.sum(np.array(speeds)) / (len(path) - 1)
+        avg_speed = np.sum((np.array(speeds) * np.array(lengths)) / np.sum(np.array(lengths)))
         speed_matrix.loc[id_pair[0], id_pair[1]] = avg_speed
 
-
-        # Similar idea for geometries, combine all edge geometries together into one
-        geoms = []
-        for i in range(len(path) - 1):
-
-            geoms.append(eds[((eds['start_coord']==tuple(path[i])) | (eds['end_coord']==tuple(path[i]))) &
-                        ((eds['start_coord']==tuple(path[i+1])) | (eds['end_coord']==tuple(path[i+1])))]['geometry'].values[0])
-
+        # get total path geometry
         newline = geometry.MultiLineString(geoms)
         newline = ops.linemerge(newline)
         geom_matrix.loc[id_pair[0], id_pair[1]] = newline
 
-
-
-
+        # find most common road type along path
+        highway_matrix.loc[id_pair[0], id_pair[1]] = most_frequent(highways)
 
     # impromptu progress bar
     count += 1
@@ -483,11 +543,23 @@ x = distance_matrix[distance_matrix != 0].values.flatten()
 len(x[~np.isnan(x)]) / len(pairs)
 
 
+# Need directionality in the matrices, just add tranposes to bottom triangle
+distance_matrix = distance_matrix + distance_matrix.T
+speed_matrix = speed_matrix + speed_matrix.T
+
+for i in range(geom_matrix.shape[0]):
+    for j in range(i, geom_matrix.shape[1]):
+        geom_matrix.iloc[j, i] = geom_matrix.iloc[i, j]
+
+
 # Add cordinates as columns and indices
 distance_matrix.index, distance_matrix.columns = coord_list, coord_list
 speed_matrix.index, speed_matrix.columns = coord_list, coord_list
+geom_matrix.index, geom_matrix.columns = coord_list, coord_list
+highway_matrix.index, highway_matrix.columns = coord_list, coord_list
 
 # Look at how sparse it is
 #distance_matrix.to_pickle("data/distance_matrices/sparse_n10.pkl")
 #speed_matrix.to_pickle("data/speed_matrices/sparse_n10.pkl")
 #geom_matrix.to_pickle("data/geom_matrices/sparse_n10.pkl")
+#highway_matrix.to_pickle("data/highway_matrices/sparse_n10.pkl")
