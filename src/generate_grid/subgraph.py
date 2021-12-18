@@ -130,7 +130,7 @@ eds = eds.drop_duplicates(subset=['node_start', 'node_end'], keep='first')
 eds = eds.loc[:, ['highway', 'maxspeed','geometry', 'length', 'node_start', 'node_end']]
 
 eds = eds[~eds['maxspeed'].isnull().values]
-
+eds['maxspeed'] = eds['maxspeed'].values.astype(float)
 
 def most_frequent(List):
 
@@ -277,7 +277,6 @@ plt.ylim(lat_b)
 
 #plt.savefig("data/figures/Dublin_centre_raw.jpeg", dpi=300)
 print(eds.shape)
-np.unique(eds['highway'])
 
 plt.show()
 
@@ -356,6 +355,7 @@ for i in range(300):
 
     # Adjust speed accordingly
     speed_list = np.array(speed_list).astype(float)[id_keep] * ((len_list-add_len)/len_list)
+    speed_list = speed_list + ((add_speed * add_len) / len_list)
 
     # Contract the two nodes (The main step)
     con_graph = nx.contracted_nodes(con_graph, nodes[0], nodes[1], self_loops=False)
@@ -400,7 +400,6 @@ for i in range(300):
     nds, eds = momepy.nx_to_gdf(con_graph)
 
 print(eds.shape)
-
 
 # In[1]
 
@@ -448,7 +447,7 @@ eds['end_coord'] = np.array(con_graph.edges)[:, 1]
 indices = np.arange(np.array(list(con_graph.nodes)).shape[0])
 
 # Pick random IDs and get their coordinates (for networkx)
-sample_ids = np.random.choice(indices, 50, replace=False)
+sample_ids = np.random.choice(indices, 10, replace=False)
 sample_coords = np.array(list(con_graph.nodes))[sample_ids]
 
 
@@ -505,41 +504,32 @@ for i in range(len(pairs)):
     # Only include path if none of the other selected nodes lie along it
     if (depot_coord in pair) or (len([i for i in path if i in sample_coords]) == 2):
 
-        # get path length, add to matrix, count
-        path_length = nx.shortest_path_length(con_graph, tuple(pair[0]), tuple(pair[1]), weight='length')
-        distance_matrix.loc[id_pair[0], id_pair[1]] = path_length
-
         # read speeds from each edge along path
-        speeds = []
-        for i in range(len(path) - 1):
+        lengths, speeds, geoms, highways = [], [], [], []
 
-            speeds.append(float(eds[((eds['start_coord']==tuple(path[i])) | (eds['end_coord']==tuple(path[i]))) &
-                         ((eds['start_coord']==tuple(path[i + 1])) | (eds['end_coord']==tuple(path[i + 1])))]['maxspeed'].values[0]))
+        for j in range(len(path) - 1):
+
+            row = eds[((eds['start_coord']==tuple(path[j])) | (eds['end_coord']==tuple(path[j]))) &
+                         ((eds['start_coord']==tuple(path[j + 1])) | (eds['end_coord']==tuple(path[j + 1])))]
+
+            lengths.append(row['length'].values[0])
+            speeds.append(row['maxspeed'].values[0])
+            geoms.append(row['geometry'].values[0])
+            highways.append(row['highway'].values[0])
+
+        # get path length, add to matrix
+        distance_matrix.loc[id_pair[0], id_pair[1]] = np.sum(np.array(lengths))
 
         # record average speed for path
-        avg_speed = np.sum(np.array(speeds)) / (len(path) - 1)
+        avg_speed = np.sum((np.array(speeds) * np.array(lengths)) / np.sum(np.array(lengths)))
         speed_matrix.loc[id_pair[0], id_pair[1]] = avg_speed
 
-
-        # Similar idea for geometries, combine all edge geometries together into one
-        geoms = []
-        for i in range(len(path) - 1):
-
-            geoms.append(eds[((eds['start_coord']==tuple(path[i])) | (eds['end_coord']==tuple(path[i]))) &
-                        ((eds['start_coord']==tuple(path[i+1])) | (eds['end_coord']==tuple(path[i+1])))]['geometry'].values[0])
-
+        # get total path geometry
         newline = geometry.MultiLineString(geoms)
         newline = ops.linemerge(newline)
         geom_matrix.loc[id_pair[0], id_pair[1]] = newline
 
-
-        highways = []
-        for i in range(len(path) - 1):
-
-            highways.append(eds[((eds['start_coord']==tuple(path[i])) | (eds['end_coord']==tuple(path[i]))) &
-                        ((eds['start_coord']==tuple(path[i+1])) | (eds['end_coord']==tuple(path[i+1])))]['highway'].values[0])
-
-
+        # find most common road type along path
         highway_matrix.loc[id_pair[0], id_pair[1]] = most_frequent(highways)
 
     # impromptu progress bar
@@ -568,10 +558,8 @@ speed_matrix.index, speed_matrix.columns = coord_list, coord_list
 geom_matrix.index, geom_matrix.columns = coord_list, coord_list
 highway_matrix.index, highway_matrix.columns = coord_list, coord_list
 
-highway_matrix
-
 # Look at how sparse it is
-distance_matrix.to_pickle("data/distance_matrices/sparse_n50.pkl")
-speed_matrix.to_pickle("data/speed_matrices/sparse_n50.pkl")
-geom_matrix.to_pickle("data/geom_matrices/sparse_n50.pkl")
-highway_matrix.to_pickle("data/highway_matrices/sparse_n50.pkl")
+#distance_matrix.to_pickle("data/distance_matrices/sparse_n10.pkl")
+#speed_matrix.to_pickle("data/speed_matrices/sparse_n10.pkl")
+#geom_matrix.to_pickle("data/geom_matrices/sparse_n10.pkl")
+#highway_matrix.to_pickle("data/highway_matrices/sparse_n10.pkl")
