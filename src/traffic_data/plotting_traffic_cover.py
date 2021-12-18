@@ -2,7 +2,7 @@
 
 # import geopandas as gpd
 import pandas as pd
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 # import geoplot as gplt
 # import geoplot.crs as gcrs
 import numpy as np
@@ -50,9 +50,6 @@ full_traffic_data["Elev"] = full_traffic_data.apply(site_elev, axis=1)
 # assign matching geometry
 full_traffic_data["geometry"] = full_traffic_data.apply(site_geom, axis=1)
 
-# TODO test for sanity
-# TODO plot better - dublin map?
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # interpolation function
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -60,7 +57,7 @@ full_traffic_data["geometry"] = full_traffic_data.apply(site_geom, axis=1)
 
 def traffic_interpolator(day_type, hour_in_day, num_neighbours):
     # isolate relevant data
-    specific_data = full_traffic_data[(full_traffic_data["Day_Type"] == day_type) \
+    specific_data = full_traffic_data[(full_traffic_data["Day_Type"] == day_type)
                                       & (full_traffic_data["Hour_in_Day"] == hour_in_day)].copy
 
     # take mean of each site for these
@@ -83,7 +80,7 @@ def traffic_interpolator(day_type, hour_in_day, num_neighbours):
     obs = np.stack((obs_raw[0], obs_raw[1]), axis=1)
 
     # isolate value for each point
-    vals = wd_0900["Mean_Detector_Vol_hr"]
+    vals = specific_data["Mean_Detector_Vol_hr"]
 
     # make interpolator
     # grbf kernel with epsilon=1 shape parameter
@@ -94,16 +91,18 @@ def traffic_interpolator(day_type, hour_in_day, num_neighbours):
 
 our_interpolator = traffic_interpolator("WD", 9, 5)
 
-y_flat = our_interpolator(x_flat)  # interpolate the values for that grid
-y_grid = y_flat.reshape(5, 5)  # reshape as wanted
-fig, ax = plt.subplots()
-ax.pcolormesh(*x_grid, y_grid, shading='gouraud')
-p = ax.scatter(*obs.T, c=vals, s=50, ec='k')
-fig.colorbar(p)
+# y_flat = our_interpolator(x_flat)  # interpolate the values for that grid
+# y_grid = y_flat.reshape(5, 5)  # reshape as wanted
+# fig, ax = plt.subplots()
+# ax.pcolormesh(*x_grid, y_grid, shading='gouraud')
+# p = ax.scatter(*obs.T, c=vals, s=50, ec='k')
+# fig.colorbar(p)
 
-our_interpolator([ [ 692899.19445525, 5923903.80728167]])
+our_interpolator([[692899.19445525, 5923903.80728167]])
 
-
+# TODO test for sanity
+# TODO plot better - dublin map?
+# TODO sort out file structure with function calling
 
 # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # # mapping set-up
@@ -129,5 +128,3 @@ our_interpolator([ [ 692899.19445525, 5923903.80728167]])
 # gplt.kdeplot(sites_geodf, cmap='Reds', shade=True, shade_lowest=False, ax=ax, projection=gcrs.EuroPP(), clip=dub_eds)
 
 # TODO fix issue with clip
-# TODO wrap into function which takes day and time args
-
