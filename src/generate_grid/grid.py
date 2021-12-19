@@ -252,7 +252,7 @@ class Grid():
 
 
 
-    def read_driving_cycle(self, filename, h):
+    def read_driving_cycle(self, filename, h, hbefa_filename=None):
         """ Read in driving cycle from .csv file. Used to read in WLTP,
             but header is adjustable for potential use of other driving cycles.
             Driving cycles saved as pandas DataFrames.
@@ -270,6 +270,11 @@ class Grid():
         self.dc_suburban = self.dc_raw[self.dc_raw['Phase']=='Middle']
         self.dc_rural = self.dc_raw[self.dc_raw['Phase']=='High']
         self.dc_highway = self.dc_raw[self.dc_raw['Phase']=='Extra-high']
+
+
+        # Read in HBEFA driving cycles (These are the ones we'll actually use)
+        if hbefa_filename:
+            self.dc_HBEFA = pd.read_pickle(hbefa_filename)
 
 
 
@@ -508,7 +513,7 @@ class Grid():
             bins.append(200)
 
             # Read speed matrix and save dataframe shape, indexes and columns
-            self.velocity_matrix = pd.read_pickle(filename)
+            self.velocity_matrix, self.speed_limit_matrix = pd.read_pickle(filename), pd.read_pickle(filename)
             indices, columns = self.velocity_matrix.index, self.velocity_matrix.columns
             v_shape = self.velocity_matrix.shape
 
@@ -615,6 +620,10 @@ class Grid():
         # The velocities used to calculate LoS are the initial simplified
         # average velocities taken from the WLTP driving cycle
 
+        # Create avg velocity and stop percentages matrix
+        self.hbefa_velocity_matrix = self.velocity_matrix.copy()
+        self.stop_percentages_matrix = self.velocity_matrix.copy()
+
         # Read in shape of output matrix
         self.level_of_service = self.geom_matrix.copy()
 
@@ -623,18 +632,26 @@ class Grid():
 
         # Highway options are made lowercase
         highway_types = np.char.lower(self.lund_vasteras_ranges.iloc[1:, 0].values.astype(str))
-        velocity_bins = np.array((110, 90, 50))
 
-        self.lund_vasteras_ranges = self.lund_vasteras_ranges.iloc[1:, 2:]
+        # LoS and Driving Cycle speed limit ranges vary
+        los_spl = np.array((50, 90, 110))
+        dc_spl = np.array((30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130))
 
-        for index, row in self.lund_vasteras_ranges.iterrows():
-            self.lund_vasteras_ranges.loc[index] = row.str.split(", ")
-            self.lund_vasteras_ranges.loc[index] = np.array(self.lund_vasteras_ranges.loc[index])
+        # Get midpoints to find closest available value
+        los_spl_bins = (los_spl[1:] + los_spl[:-1]) / 2
+        dc_spl_bins = (dc_spl[1:] + dc_spl[:-1]) / 2
+
+        # Get just ranges
+        self.lund_vasteras_ranges = self.lund_vasteras_ranges.iloc[:, 1:]
+
+        for idx, row in self.lund_vasteras_ranges.iterrows():
+            self.lund_vasteras_ranges.loc[idx] = row.str.split(", ")
+            self.lund_vasteras_ranges.loc[idx] = np.array(self.lund_vasteras_ranges.loc[idx])
 
         # Iterate over each row of matrix
         for idx, row in self.geom_matrix.iterrows():
 
-            net_weights = []
+            net_velocity, net_stop = [], []
 
             # For each line in row
             for line in row:
@@ -649,13 +666,30 @@ class Grid():
                         # Get column index from geom_matrix
                         col_idx = row[row == line].index[0]
 
-                        # Get highway, speed of line (row, column index for lund/vasteras ranges)
-                        highway_idx = np.where(highway_types == self.highway_matrix.loc[[idx], [col_idx]].values[0, 0])[0][0]
-                        v_idx = np.digitize(self.velocity_matrix.loc[[idx], [col_idx]].values, velocity_bins)[0][0]
+                        # Get highway and speed of line (row, column index for lund/vasteras ranges)
+                        highway = self.highway_matrix.loc[[idx], [col_idx]].values[0, 0]
+                        highway_idx = np.where(highway_types == highway)[0][0]
+                        spl = self.speed_limit_matrix.loc[[idx], [col_idx]].values
+                        los_spl_idx = np.digitize(spl, los_spl_bins)[0][0]
 
                         # Get corresponging los bins and bin traffic levels for each line segment
-                        los_bins = np.array(self.lund_vasteras_ranges.iloc[highway_idx, v_idx]).astype(float)
-                        los_segments = np.digitize(inter_recs['Traffic'].values, los_bins)
+                        los_bins = np.array(self.lund_vasteras_ranges.iloc[highway_idx, los_spl_idx]).astype(float)
+                        los_segments = np.digitize(inter_recs['Traffic'].values, los_bins) + 1
+
+                        # Get average speed and stop percentage for each segment
+                        spl = self.speed_limit_matrix.loc[[idx], [col_idx]].values
+                        dc_spl_idx = np.digitize(spl, dc_spl_bins)[0][0]
+
+                        # Empty arrays for average velocity and stop percentage for each segment
+                        avg_velocities = np.empty(los_segments.shape)
+                        stop_percentages =  np.empty(los_segments.shape)
+
+                        # Get average velocity and stop percentage from HBEFA driving
+                        # cycles according to road class, speed limit, and LoS
+                        for j in range(len(los_segments)):
+
+                            dc = self.dc_HBEFA.loc[(highway, dc_spl[dc_spl_idx], los_segments[j])]
+                            avg_velocities[j], stop_percentages[j] = dc['Velocity'], dc['Stop %'] / 100
 
                         # Get total length and length weights
                         total_len, len_weights = line.length, []
@@ -665,20 +699,25 @@ class Grid():
                             len_weights.append(rec.intersection(line).length / total_len)
                         len_weights = np.array(len_weights)
 
-                        # Find total proportion of each level of service along line
-                        los_proportions = np.zeros(3)
-                        los_proportions[0] = np.sum(len_weights[los_segments == 0])
-                        los_proportions[1] = np.sum(len_weights[los_segments == 1])
-                        los_proportions[2] = np.sum(len_weights[los_segments == 2])
+                        # Weighted average (by length) of velocity and stop percentage along edge
+                        net_velocity.append(np.sum(np.array(len_weights) * avg_velocities))
+                        net_stop.append(np.sum(np.array(len_weights) * stop_percentages))
 
-                        # Sum up contributions from each rectangle for final correction factor
-                        #net_weights.append(np.sum(np.array(len_weights) * vehicle_density))
+                    else:
+                        net_velocity.append(0)
+                        net_stop.append(0)
+                else:
+                    net_velocity.append(0)
+                    net_stop.append(0)
+
+            self.hbefa_velocity_matrix[idx] = net_velocity
+            self.stop_percentages_matrix[idx] = net_stop
 
 
 
 
 
-    def compute_cost(self, method="MEET", idling=True, load=True, rain=True, cold=True):
+    def compute_cost(self, method="MEET", idling=True, hbefa=True, load=True, rain=True, cold=True):
         """ Compute CO2 emitted along paths between all vertices using either
             MEET or COPERT methodologies. Represented as pandas DataFrame.
             Model coefficients from MEET or COPERT files previously read.
@@ -693,6 +732,11 @@ class Grid():
 
         # Need distance and velocity matrices
         d = self.distance_matrix.to_numpy() / 1000
+
+        # Using traffic velocities
+        if hbefa == True:
+            self.velocity_matrix = self.hbefa_velocity_matrix.copy()
+
         velocities = self.velocity_matrix.to_numpy()
 
         # Adjust velocities by rainfall correction factors
@@ -854,36 +898,43 @@ class Grid():
         # Add idling costs
         if idling == True:
 
-            # Average velocities from driving cycle, add lower bound for binning
-            velocity = list(self.dc_net['v_ave without stops (km/h)'])
-
-            # Create bins using midpoint between average velocities
-            bins = [(velocity[i] + velocity[i+1])/2 for i in range(len(velocity)-1)]
-
             # Find travel time along each edge without stops in seconds
-            travel_times = (d / velocities) * 3600
+            self.travel_times = (d / velocities) * 3600
+            self.idling_times = self.travel_times.copy()
 
-            # Percentage of stoppage time according to speeds from driving cycles
-            stop_percentages = [float(p[0:-1]) for p in self.dc_net['p_stop (%)']]
+            # Using stop percentages from HBEFA traffic driving cycles
+            if hbefa == True:
+                self.idling_times = self.stop_percentages_matrix * self.travel_times
+                self.idling_times = self.idling_times.to_numpy()
 
-            v_binned = np.array([velocity[idx] for idx in np.digitize(velocities.flatten(), bins)])
-            v_binned = np.reshape(v_binned, velocities.shape)
-            v_binned[velocities==0] = 0
+            else:
+                # Average velocities from driving cycle, add lower bound for binning
+                velocity = list(self.dc_net['v_ave without stops (km/h)'])
 
-            # For each percentage
-            for i in range(len(velocity)):
+                # Create bins using midpoint between average velocities
+                bins = [(velocity[i] + velocity[i+1])/2 for i in range(len(velocity)-1)]
 
-                # Compute total time stopped as percentage of total time travelling
-                travel_times[v_binned==velocity[i]] = (stop_percentages[i] / 100) * travel_times[v_binned==velocity[i]]
+                # Percentage of stoppage time according to speeds from driving cycles
+                stop_percentages = [float(p[0:-1]) for p in self.dc_net['p_stop (%)']]
+
+                v_binned = np.array([velocity[idx] for idx in np.digitize(velocities.flatten(), bins)])
+                v_binned = np.reshape(v_binned, velocities.shape)
+                v_binned[velocities==0] = 0
+
+                # For each percentage
+                for i in range(len(velocity)):
+
+                    # Compute total time stopped as percentage of total time travelling
+                    self.idling_times[v_binned==velocity[i]] = (stop_percentages[i] / 100) * self.travel_times[v_binned==velocity[i]]
 
 
             # Add costs from idling (0.4617g/s CO2 emitted while idling)
-            cost = cost + travel_times * 0.4617
-            self.travel_times = travel_times
+            cost = cost + (self.idling_times * 0.4617)
 
 
         # Round to nearest gram, make dataframe
         cost = np.round(cost)
+
         self.cost_matrix = pd.DataFrame(cost,
                                         index=data[:, 3].astype(int),
                                         columns=data[:, 3].astype(int))

@@ -70,19 +70,14 @@ dublin.create_df()
 
 # compute matrices for various edges
 dublin.compute_distance(mode="OSM", filename="data/distance_matrices/sparse_n20.pkl")
-#dublin.compute_gradient()
-dublin.read_driving_cycle("data/WLTP.csv", h=4)
+dublin.compute_gradient()
+dublin.read_driving_cycle("data/WLTP.csv", h=4, hbefa_filename="data/HBEFA_Driving_Cycles.pkl")
 dublin.compute_speed_profile(filename="data/speed_matrices/sparse_n20.pkl")
 dublin.create_geometries("data/geom_matrices/sparse_n20.pkl")
 
 dublin.compute_traffic(filename="data/traffic_matrices/test.pkl")
 dublin.read_highways(filename="data/highway_matrices/sparse_n20.pkl")
 dublin.compute_level_of_service()
-
-
-
-# In[1]
-
 
 dublin.read_weather(filename="data/weather_matrices/2016-01-28_4pm_tp.pkl")
 dublin.compute_weather_correction()
@@ -92,7 +87,7 @@ dublin.read_skin_temp(filename="data/weather_matrices/2016-01-28_4pm_skt.pkl")
 dublin.compute_cost(method="copert with meet")
 np.set_printoptions(suppress=True)
 
-dublin.cost_matrix
+dublin.weather_correction_matrix
 
 
 
