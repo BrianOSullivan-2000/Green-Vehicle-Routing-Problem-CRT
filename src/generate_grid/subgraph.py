@@ -60,7 +60,7 @@ types = np.unique(eds.dropna(subset=['highway'])['highway'].values)
 types
 
 # Only have network of main roads
-#main_roads = types[[3, 4, 6, 7, 9, 10, 15, 16]]
+#main_roads = types[[4, 5, 8, 9, 11, 12, 14, 15, 17, 18]]
 main_roads = types[[2, 3, 5, 6, 8, 9, 10, 11]]
 eds = eds[eds['highway'].isin(main_roads)]
 
@@ -127,7 +127,7 @@ n2_ids = np.array(n2_ids)
 
 eds = eds.drop_duplicates(subset=['node_start', 'node_end'], keep='first')
 
-eds = eds.loc[:, ['highway', 'maxspeed','geometry', 'length', 'node_start', 'node_end']]
+eds = eds.loc[:, ['highway', 'maxspeed', 'geometry', 'length', 'node_start', 'node_end']]
 
 eds = eds[~eds['maxspeed'].isnull().values]
 eds['maxspeed'] = eds['maxspeed'].values.astype(float)
@@ -246,15 +246,17 @@ while (truecount < len(n2_ids)) and (loops < 10):
         # Our new edges have multiple highway entries, get the most common one and assign it
         eds["highway"] = eds['highway'].apply(most_frequent)
 
+
+# Another graph/gdf reset
+GG = momepy.gdf_to_nx(eds)
+nds, eds = momepy.nx_to_gdf(GG)
+
+
 # Let's plot the results
 fig, ax = plt.subplots(1, 1, figsize=(10,10))
 
 # Add county border
 dub_df.plot(ax=ax, color="c", edgecolor="k", alpha=0.4, zorder=2)
-
-# Another graph/gdf reset
-GG = momepy.gdf_to_nx(eds)
-nds, eds = momepy.nx_to_gdf(GG)
 
 # Plot edges and nodes
 eds.plot(ax=ax, alpha=0.2, color="k", linewidth=2, zorder=3)
@@ -447,7 +449,7 @@ eds['end_coord'] = np.array(con_graph.edges)[:, 1]
 indices = np.arange(np.array(list(con_graph.nodes)).shape[0])
 
 # Pick random IDs and get their coordinates (for networkx)
-sample_ids = np.random.choice(indices, 10, replace=False)
+sample_ids = np.random.choice(indices, 200, replace=False)
 sample_coords = np.array(list(con_graph.nodes))[sample_ids]
 
 
@@ -550,6 +552,7 @@ speed_matrix = speed_matrix + speed_matrix.T
 for i in range(geom_matrix.shape[0]):
     for j in range(i, geom_matrix.shape[1]):
         geom_matrix.iloc[j, i] = geom_matrix.iloc[i, j]
+        highway_matrix.iloc[j, i] = highway_matrix.iloc[i, j]
 
 
 # Add cordinates as columns and indices
@@ -559,7 +562,7 @@ geom_matrix.index, geom_matrix.columns = coord_list, coord_list
 highway_matrix.index, highway_matrix.columns = coord_list, coord_list
 
 # Look at how sparse it is
-#distance_matrix.to_pickle("data/distance_matrices/sparse_n10.pkl")
-#speed_matrix.to_pickle("data/speed_matrices/sparse_n10.pkl")
-#geom_matrix.to_pickle("data/geom_matrices/sparse_n10.pkl")
-#highway_matrix.to_pickle("data/highway_matrices/sparse_n10.pkl")
+distance_matrix.to_pickle("data/distance_matrices/sparse_n200.pkl")
+speed_matrix.to_pickle("data/speed_matrices/sparse_n200.pkl")
+geom_matrix.to_pickle("data/geom_matrices/sparse_n200.pkl")
+highway_matrix.to_pickle("data/highway_matrices/sparse_n200.pkl")

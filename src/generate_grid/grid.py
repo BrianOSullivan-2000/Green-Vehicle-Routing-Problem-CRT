@@ -19,7 +19,6 @@ class Grid():
     """
 
 
-
     def __init__(self, lon_b, lat_b, h=1):
         """ Arguments
             lon_b, lat_b - bounding box for latitude and longitude, given as tuples
@@ -143,7 +142,7 @@ class Grid():
         self.df = pd.DataFrame(data=data)
 
         # Order vertices
-        self.df.loc[self.df['is_vertice'] != 0, 'is_vertice'] = np.arange(1,21)
+        self.df.loc[self.df['is_vertice'] != 0, 'is_vertice'] = np.arange(1,self.df.loc[self.df['is_vertice'] != 0, 'is_vertice'].shape[0]+1)
         self.depot = self.df.loc[self.df['is_vertice'] == 1]
 
 
@@ -584,6 +583,28 @@ class Grid():
 
 
 
+    def read_highways(self, filename):
+        """ Read in highway matrix of road edges
+
+            filename - path to highway matrix file
+        """
+
+        # Read in matrix
+        self.highway_matrix = pd.read_pickle(filename)
+        arr = self.highway_matrix
+
+        # Convert all link roads to standard roads
+        arr[arr == 'motorway_link'] = 'motorway'
+        arr[arr == 'trunk_link'] = 'trunk'
+        arr[arr == 'primary_link'] = 'primary'
+        arr[arr == 'secondary_link'] = 'secondary'
+        arr[arr == 'tertiary_link'] = 'tertiary'
+
+        self.highway_matrix.loc[:, :] = arr
+
+
+
+
     def compute_level_of_service(self):
         """ Level of service (LoS) determined along each edge according to speed
             along edge and vehicle count. Proportion of each LoS is found along
@@ -596,10 +617,22 @@ class Grid():
 
         # Read in shape of output matrix
         self.level_of_service = self.geom_matrix.copy()
-        los_bins = np.array((0, 0))
+
+        # Read in highway/speed limit classification
+        self.lund_vasteras_ranges = pd.read_csv("data/lund_vasteras_ranges.csv")
+
+        # Highway options are made lowercase
+        highway_types = np.char.lower(self.lund_vasteras_ranges.iloc[1:, 0].values.astype(str))
+        velocity_bins = np.array((110, 90, 50))
+
+        self.lund_vasteras_ranges = self.lund_vasteras_ranges.iloc[1:, 2:]
+
+        for index, row in self.lund_vasteras_ranges.iterrows():
+            self.lund_vasteras_ranges.loc[index] = row.str.split(", ")
+            self.lund_vasteras_ranges.loc[index] = np.array(self.lund_vasteras_ranges.loc[index])
 
         # Iterate over each row of matrix
-        for index, row in self.geom_matrix.iterrows():
+        for idx, row in self.geom_matrix.iterrows():
 
             net_weights = []
 
@@ -613,10 +646,16 @@ class Grid():
 
                     if inter_recs.shape[0] > 0:
 
-                        velocities = self.velocity_matrix.loc[[index]]
-                        col_index = row[row == line].index[0]
-                        vehicle_density = (np.array(inter_recs['Traffic'].values)  / velocities[col_index][0]) / 2
+                        # Get column index from geom_matrix
+                        col_idx = row[row == line].index[0]
 
+                        # Get highway, speed of line (row, column index for lund/vasteras ranges)
+                        highway_idx = np.where(highway_types == self.highway_matrix.loc[[idx], [col_idx]].values[0, 0])[0][0]
+                        v_idx = np.digitize(self.velocity_matrix.loc[[idx], [col_idx]].values, velocity_bins)[0][0]
+
+                        # Get corresponging los bins and bin traffic levels for each line segment
+                        los_bins = np.array(self.lund_vasteras_ranges.iloc[highway_idx, v_idx]).astype(float)
+                        los_segments = np.digitize(inter_recs['Traffic'].values, los_bins)
 
                         # Get total length and length weights
                         total_len, len_weights = line.length, []
@@ -624,13 +663,17 @@ class Grid():
                         # find proportion of line within each intersecting rectangle
                         for rec in inter_recs['geometry']:
                             len_weights.append(rec.intersection(line).length / total_len)
-
                         len_weights = np.array(len_weights)
 
-                        # Sum up contributions from each rectangle for final correction factor
-                        net_weights.append(np.sum(np.array(len_weights) * vehicle_density))
+                        # Find total proportion of each level of service along line
+                        los_proportions = np.zeros(3)
+                        los_proportions[0] = np.sum(len_weights[los_segments == 0])
+                        los_proportions[1] = np.sum(len_weights[los_segments == 1])
+                        los_proportions[2] = np.sum(len_weights[los_segments == 2])
 
-            print(net_weights)
+                        # Sum up contributions from each rectangle for final correction factor
+                        #net_weights.append(np.sum(np.array(len_weights) * vehicle_density))
+
 
 
 

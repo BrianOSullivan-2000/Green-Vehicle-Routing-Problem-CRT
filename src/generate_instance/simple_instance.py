@@ -35,7 +35,7 @@ ds = pd.read_pickle("data/scats_sites_with_elev.pkl")
 ds = ds.loc[:, "Lat":"Elev"]
 
 # Vertices
-vdf = pd.read_pickle("data/distance_matrices/county_n20.pkl")
+vdf = pd.read_pickle("data/distance_matrices/sparse_n20.pkl")
 vpoints = list(vdf.columns)
 
 vpoints = np.round(np.array(vpoints), 4)
@@ -69,16 +69,20 @@ dublin.add_vertices(vpoints)
 dublin.create_df()
 
 # compute matrices for various edges
-dublin.compute_distance(mode="OSM", filename="data/distance_matrices/county_n20.pkl")
+dublin.compute_distance(mode="OSM", filename="data/distance_matrices/sparse_n20.pkl")
 #dublin.compute_gradient()
 dublin.read_driving_cycle("data/WLTP.csv", h=4)
-dublin.compute_speed_profile(filename="data/speed_matrices/county_n20.pkl")
-dublin.create_geometries("data/geom_matrices/county_n20.pkl")
+dublin.compute_speed_profile(filename="data/speed_matrices/sparse_n20.pkl")
+dublin.create_geometries("data/geom_matrices/sparse_n20.pkl")
 
 dublin.compute_traffic(filename="data/traffic_matrices/test.pkl")
+dublin.read_highways(filename="data/highway_matrices/sparse_n20.pkl")
 dublin.compute_level_of_service()
 
+
+
 # In[1]
+
 
 dublin.read_weather(filename="data/weather_matrices/2016-01-28_4pm_tp.pkl")
 dublin.compute_weather_correction()
@@ -148,7 +152,7 @@ gdf.plot(ax=ax, column='Elevation', cmap='terrain', vmin = -60, vmax = 200,
 #dublin.weather.plot(ax=ax, column='Precipitation', cmap='Blues', legend=True,
             #vmin=0, vmax=np.max(dublin.weather['Precipitation']))
 
-# Add county border
+# Add sparse border
 dub_df.plot(ax=ax, color="none", edgecolor="k", alpha=0.5, zorder=2)
 
 # Plot vertices
