@@ -63,7 +63,7 @@ epoints = np.round(ds.to_numpy(), 4)
 # add points to grid
 dublin.add_elevation_points(epoints)
 dublin.add_vertices(vpoints)
-#dublin.create_interpolation(epoints)
+dublin.create_interpolation(epoints, k=5, p=4)
 
 # create df for grid
 dublin.create_df()
@@ -83,12 +83,10 @@ dublin.read_weather(filename="data/weather_matrices/2016-01-28_4pm_tp.pkl")
 dublin.compute_weather_correction()
 dublin.read_skin_temp(filename="data/weather_matrices/2016-01-28_4pm_skt.pkl")
 
-
 dublin.compute_cost(method="copert with meet")
 np.set_printoptions(suppress=True)
 
-dublin.weather_correction_matrix
-
+dublin.cost_matrix
 
 
 # In[1]
@@ -107,7 +105,13 @@ tsp.generate_tsplib(filename="instances/sample_n20", instance_name="instance", c
 
 # In[1]
 
-df = dublin.df.iloc[::200, :]
+lon_b = (-6.33, -6.19)
+lat_b = (53.315, 53.37)
+
+df = dublin.df[(dublin.df['x'] > lon_b[0]) & (dublin.df['x'] < lon_b[1])]
+df = df[(df['y'] > lat_b[0]) & (df['y'] < lat_b[1])]
+
+df = df.iloc[::10]
 
 # Make dataframe
 names = {'Elevation':df['elevation'], 'longitude':df['x'], 'latitude':df['y']}
@@ -132,37 +136,52 @@ dub_df = gpd.read_file("../Brians_Lab/data/counties.shp")
 dub_df = dub_df.set_crs(epsg=4326)
 dub_df = dub_df[dub_df["NAME_TAG"]=="Dublin"]
 
-#gdf = gdf[geometry.within(dub_df.geometry.values[0])]
+
+line_geom = dublin.geom_matrix.values.flatten()
+
+costs = dublin.cost_matrix.values.flatten()[dublin.cost_matrix.values.flatten() != 0]
+line_geoms = dublin.geom_matrix.values.flatten()[dublin.geom_matrix.values.flatten() != 0]
+
+line_gdf = gpd.GeoDataFrame(data=costs, geometry=line_geoms, crs={'init' : 'epsg:4326'})
 
 # In[1]
 
 
 fig, ax = plt.subplots(1, 1, figsize=(10,10))
 
+# Get max and min elevations for plotting elevations colourmap
+node_elevs = df['Elevation'].values
+
 # Plot elevations
-gdf.plot(ax=ax, column='Elevation', cmap='terrain', vmin = -60, vmax = 200,
-         marker=',', markersize=15, legend=True, alpha=0.7, zorder=1)
+gdf.plot(ax=ax, column='Elevation', cmap='terrain', vmin = min(node_elevs), vmax = max(node_elevs),
+         marker=',', markersize=10, legend=True, alpha=0.7, zorder=1)
 
 # Plot rainfall
 #dublin.weather.plot(ax=ax, column='Precipitation', cmap='Blues', legend=True,
             #vmin=0, vmax=np.max(dublin.weather['Precipitation']))
 
+# Plot traffic
+#dublin.traffic.plot(ax=ax, column='Traffic', cmap='rainbow', legend=True,
+            #vmin=0, vmax=np.max(dublin.traffic['Traffic']))
+
 # Add sparse border
 dub_df.plot(ax=ax, color="none", edgecolor="k", alpha=0.5, zorder=2)
 
 # Plot vertices
-gdf_v.plot(ax=ax, color="k", marker=',', markersize=1, zorder=5)
+gdf_v.plot(ax=ax, color="k", marker=',', markersize=5, zorder=5)
+
+line_gdf.plot(ax=ax, alpha=1, color="k", linewidth=1, zorder=6)
 
 # Can label vertices of points
 #for x, y, label in zip(gdf_v.geometry.x, gdf_v.geometry.y, gdf_v.is_vertice):
     #ax.annotate(label, xy=(x, y), xytext=(3, 3), textcoords="offset points")
 
 # Bounds for limits
-lon_b = (-6.35, -6.15)
-lat_b = (53.25, 53.4)
+#lon_b = (-6.35, -6.15)
+#lat_b = (53.25, 53.4)
 
-#lon_b = (-6.32, -6.21)
-#lat_b = (53.325, 53.365)
+lon_b = (-6.33, -6.19)
+lat_b = (53.315, 53.37)
 
 # Plot
 plt.xlim(lon_b)

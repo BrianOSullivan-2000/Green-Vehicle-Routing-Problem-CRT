@@ -89,20 +89,21 @@ class Grid():
 
 
 
-    def create_interpolation(self, data):
+    def create_interpolation(self, data, k=10, p=2):
         """ Take in input data and interpolate elevations over entire grid.
             Interpolation carried out with IDW2 method.
 
-        data - numpy array of points, points have shape (x, y, elevation)
+            data - numpy array of points, points have shape (x, y, elevation)
         """
+        import scipy.interpolate as interp
 
         # Get lats and lons and convert to grid with utm projection
         lons, lats = data[:, 0], data[:, 1]
 
         # Convert both input points and gridpoints to correct grid using UTM projection
-        obs_raw = np.asarray(utm.from_latlon(np.asarray(lons), np.asarray(lats))[0:2])
+        obs_raw = np.asarray(utm.from_latlon(np.asarray(lats), np.asarray(lons))[0:2])
         obs = np.stack((obs_raw[0], obs_raw[1]), axis=1)
-        grid_obs_raw = np.asarray(utm.from_latlon(self.xx.ravel(), self.yy.ravel())[0:2])
+        grid_obs_raw = np.asarray(utm.from_latlon(self.yy.ravel(), self.xx.ravel())[0:2])
         grid_obs = np.stack((grid_obs_raw[0], grid_obs_raw[1]), axis=1)
 
         # Object for querying nearest points
@@ -110,10 +111,10 @@ class Grid():
 
         # Each point in grid determines k=10 nearest points from input data
         # d is separation distances and inds are indexes of corresponding points
-        d, inds = tree.query(np.array(grid_obs), k=10)
+        d, inds = tree.query(np.array(grid_obs), k=k)
 
         # Calculate IDW2 weights
-        w = 1.0 / d**2
+        w = 1.0 / d**p
 
         # Compute weighted averages for each gridpoint
         weighted_averages = np.sum(w * data[:, 2][inds], axis=1) / np.sum(w, axis=1)
@@ -232,7 +233,6 @@ class Grid():
         elevs = data[:, 2]
 
         # Compute rise and run for all point pairs
-        # TODO: (RUN IS ASSUMING EUCLIDEAN DISTANCE MATRIX)
         # if distance matrix is non-euclidean, use euclidean values for run
         rise = elevs[..., np.newaxis] - elevs[np.newaxis, ...]
         run = self.distance_matrix.to_numpy()
@@ -439,7 +439,7 @@ class Grid():
                 if line != 0:
 
                     # Find all intersecting rectanges in weather grid
-                    inter_recs = self.weather[self.weather.crosses(line)]
+                    inter_recs = self.weather[self.weather.intersects(line)]
 
                     if inter_recs.shape[0] > 0:
                         # Only bother computing if there is variance along line
@@ -460,6 +460,8 @@ class Grid():
                             net_weights.append(inter_recs['Rain_Correction'].iloc[0])
 
                     else:
+                        print("Rectangle Error")
+                        self.line = line_gdf
                         net_weights.append(0)
 
                 # Include zeros to maintain shape of matrix
@@ -659,7 +661,7 @@ class Grid():
                 if line != 0:
 
                     # Find all intersecting rectanges in weather grid
-                    inter_recs = self.traffic[self.traffic.crosses(line)]
+                    inter_recs = self.traffic[self.traffic.intersects(line)]
 
                     if inter_recs.shape[0] > 0:
 
