@@ -87,12 +87,13 @@ def traffic_interpolator(specific_data, num_neighbours, eps):
     return interpolator
 
 # set up values to check
-eps_vals = [0.5, 1, 2]
-num_neighbour_vals = [3, 5, 10]
+eps_vals = [0.1, 1, 10, 100]
+num_neighbour_vals = [3, 5, 10, 50]
 times = [6, 9, 12, 15, 18, 21]
 
 # set up training and testing sites
 K = 10  # number of folds
+R = 5 # number of replicates
 all_sites = np.asarray(full_traffic_data["Site"].unique())
 num_sites = len(full_traffic_data["Site"].unique())
 n_train = int(num_sites*0.85)
@@ -103,63 +104,77 @@ test_sites = all_sites[~np.isin(all_sites, train_sites)]
 train_data = full_traffic_data[np.isin(full_traffic_data["Site"], train_sites)].copy()
 test_data = full_traffic_data[np.isin(full_traffic_data["Site"], test_sites)].copy()
 
+replicate_storage = np.zeros((R, len(eps_vals), len(num_neighbour_vals)))
 mse_storage = np.zeros((K, len(eps_vals), len(num_neighbour_vals)))
 folds = np.repeat(np.arange(0, K, 1), np.ceil(n_train/K))
 random.shuffle(folds)  # mutates in place
 folds = folds[0:n_train]
 
-for k in range(K):
-    # split into train and val fold sites
-    train_fold_sites = train_sites[folds != k].copy()
-    val_fold_sites = train_sites[folds == k].copy()
+for r in range(R):
+    for k in range(K):
+        # split into train and val fold sites
+        train_fold_sites = train_sites[folds != k].copy()
+        val_fold_sites = train_sites[folds == k].copy()
 
-    # separate out train and val fold data
-    train_folds = train_data[np.isin(train_data["Site"], train_fold_sites)].copy()
-    val_folds = train_data[np.isin(train_data["Site"], val_fold_sites)].copy()
+        # separate out train and val fold data
+        train_folds = train_data[np.isin(train_data["Site"], train_fold_sites)].copy()
+        val_folds = train_data[np.isin(train_data["Site"], val_fold_sites)].copy()
 
-    for eps_ind, i in enumerate(eps_vals):
-        print(i)
-        for neigh_ind, j in enumerate(num_neighbour_vals):
-            mse_storage_j = []
-            for t in times:
-                # filter data to specific scenario
-                filtered_data = train_folds[(train_folds["Hour_in_Day"] == t) &
-                                            (train_folds["Day_Type"] == "WD")]
+        for eps_ind, i in enumerate(eps_vals):
+            print(i)
+            for neigh_ind, j in enumerate(num_neighbour_vals):
+                mse_storage_j = []
+                for t in times:
+                    # filter data to specific scenario
+                    filtered_data_train = train_folds[(train_folds["Hour_in_Day"] == t) &
+                                                      (train_folds["Day_Type"] == "WD")]
 
-                # create interpolator on training fold
-                train_interp = traffic_interpolator(filtered_data, j, i)
+                    filtered_data_val = val_folds[(val_folds["Hour_in_Day"] == t) &
+                                                  (val_folds["Day_Type"] == "WD")]
 
-                # now check performance with val fold
-                # get true values
-                val_folds["Mean_Detector_Vol_hr"] = val_folds.groupby(["Site"])["All_Detector_Vol"].transform('mean')
+                    # create interpolator on training fold
+                    train_interp = traffic_interpolator(filtered_data_train, num_neighbours=j, eps=i)
 
-                # remove duplicates of sites
-                # so left with just mean of each site at this hour and day type
-                val_folds = val_folds.drop_duplicates(subset=['Site'])
+                    # now check performance with val fold
+                    # get true values
+                    filtered_data_val["Mean_Detector_Vol_hr"] = filtered_data_val.groupby(["Site"])["All_Detector_Vol"].transform('mean')
 
-                # assign matching elev and geometry
-                val_folds["Elev"] = val_folds.apply(site_elev, axis=1)
-                val_folds["geometry"] = val_folds.apply(site_geom, axis=1)
+                    # remove duplicates of sites
+                    # so left with just mean of each site at this hour and day type
+                    filtered_data_val = filtered_data_val.drop_duplicates(subset=['Site'])
 
-                # isolate latitudes and longitudes
-                lats_val = val_folds["geometry"].apply(lambda q: q.y).copy()
-                lons_val = val_folds["geometry"].apply(lambda q: q.x).copy()
+                    # assign matching elev and geometry
+                    filtered_data_val["Elev"] = filtered_data_val.apply(site_elev, axis=1)
+                    filtered_data_val["geometry"] = filtered_data_val.apply(site_geom, axis=1)
 
-                # convert locations to utm and correct format
-                obs_raw_val = np.asarray(utm.from_latlon(np.asarray(lats_val), np.asarray(lons_val))[0:2])
-                obs_val = np.stack((obs_raw_val[0], obs_raw_val[1]), axis=1)
+                    # isolate latitudes and longitudes
+                    lats_val = filtered_data_val["geometry"].apply(lambda q: q.y).copy()
+                    lons_val = filtered_data_val["geometry"].apply(lambda q: q.x).copy()
 
-                # interpolate values for val fold
-                val_interp_results = train_interp(obs_val)
+                    # convert locations to utm and correct format
+                    obs_raw_val = np.asarray(utm.from_latlon(np.asarray(lats_val), np.asarray(lons_val))[0:2])
+                    obs_val = np.stack((obs_raw_val[0], obs_raw_val[1]), axis=1)
 
-                # true values
-                true = val_folds["Mean_Detector_Vol_hr"].to_numpy()
+                    # interpolate values for val fold
+                    val_interp_results = train_interp(obs_val)
 
-                # calc mse
-                mse = (np.sum((true - val_interp_results)**2)) / len(true)
+                    # true values
+                    true = filtered_data_val["Mean_Detector_Vol_hr"].to_numpy()
 
-                # store mse for this time
-                mse_storage_j.append(mse)
+                    # calc mse
+                    mse = (np.sum((true - val_interp_results)**2)) / len(true)
 
-            # store mean mse for this number of neighbours and eps vals
-            mse_storage[k, eps_ind, neigh_ind] = np.mean(mse_storage_j)
+                    # store mse for this time
+                    mse_storage_j.append(mse)
+
+                # store mean mse for this number of neighbours and eps vals
+                mse_storage[k, eps_ind, neigh_ind] = np.mean(mse_storage_j)
+
+    mean_mse_over_folds = np.mean(mse_storage, axis=0)
+    replicate_storage[r] = mean_mse_over_folds
+
+mean_mse_over_reps = np.mean(replicate_storage, axis=0)
+
+min_mse_ind = np.argmin(mean_mse_over_reps.flatten())
+
+# therefore use eps=0.1 and num_neighbours=50
