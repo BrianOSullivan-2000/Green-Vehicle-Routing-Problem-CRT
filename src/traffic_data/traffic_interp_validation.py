@@ -1,12 +1,11 @@
-import geopandas as gpd
+# import geopandas as gpd
 import pandas as pd
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 # import geoplot as gplt
 # import geoplot.crs as gcrs
 import numpy as np
 import utm
 import scipy.interpolate as interp
-from scipy.spatial import cKDTree
 import random
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -53,24 +52,15 @@ def site_geom(row):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # interpolation function
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-day_type, hour_in_day, num_neighbours = "WD", 9, 5
-
 def traffic_interpolator(specific_data, num_neighbours, eps):
-    # # isolate relevant data
-    # specific_data = full_traffic_data[(full_traffic_data["Day_Type"] == day_type)
-    #                                   & (full_traffic_data["Hour_in_Day"] == hour_in_day)].copy
 
     # take mean of each site for these
     # throws a SettingWithCopyWarning but is ok
     specific_data["Mean_Detector_Vol_hr"] = specific_data.groupby(["Site"])["All_Detector_Vol"].transform('mean')
 
-    # filter out values greater than 10 and less than 3000
-    #specific_data = specific_data[specific_data["Mean_Detector_Vol_hr"] < 3000]
-    #specific_data = specific_data[specific_data["Mean_Detector_Vol_hr"] > 10]
-
     # remove duplicates of sites
     # so left with just mean of each site at this hour and day type
-    specific_data = specific_data.drop_duplicates(subset=['Site'])
+    specific_data = specific_data.copy().drop_duplicates(subset=['Site'])
 
     # drop the normed vol col as now using the mean value
     specific_data = specific_data.drop(columns="All_Detector_Vol")
@@ -80,8 +70,8 @@ def traffic_interpolator(specific_data, num_neighbours, eps):
     specific_data["geometry"] = specific_data.apply(site_geom, axis=1)
 
     # isolate latitudes and longitudes
-    lats = specific_data["geometry"].apply(lambda q: q.y)
-    lons = specific_data["geometry"].apply(lambda q: q.x)
+    lats = specific_data["geometry"].apply(lambda q: q.y).copy()
+    lons = specific_data["geometry"].apply(lambda q: q.x).copy()
 
     # convert locations to utm and correct format
     obs_raw = np.asarray(utm.from_latlon(np.asarray(lats), np.asarray(lons))[0:2])
@@ -113,26 +103,63 @@ test_sites = all_sites[~np.isin(all_sites, train_sites)]
 train_data = full_traffic_data[np.isin(full_traffic_data["Site"], train_sites)].copy()
 test_data = full_traffic_data[np.isin(full_traffic_data["Site"], test_sites)].copy()
 
-acc = np.zeros((K, 12))
+mse_storage = np.zeros((K, len(eps_vals), len(num_neighbour_vals)))
 folds = np.repeat(np.arange(0, K, 1), np.ceil(n_train/K))
 random.shuffle(folds)  # mutates in place
 folds = folds[0:n_train]
 
 for k in range(K):
-    # split into trian and val folds
-    train_fold_sites = train_sites[folds != k]
-    val_fold_sites = train_sites[folds == k]
+    # split into train and val fold sites
+    train_fold_sites = train_sites[folds != k].copy()
+    val_fold_sites = train_sites[folds == k].copy()
 
+    # separate out train and val fold data
     train_folds = train_data[np.isin(train_data["Site"], train_fold_sites)].copy()
     val_folds = train_data[np.isin(train_data["Site"], val_fold_sites)].copy()
 
-    for i in eps_vals:
-        for j in num_neighbour_vals:
-            for l in times:
-                filtered_data = train_folds[(hour_in_day == l) &
-                                           (day_type == "WD")]
+    for eps_ind, i in enumerate(eps_vals):
+        print(i)
+        for neigh_ind, j in enumerate(num_neighbour_vals):
+            mse_storage_j = []
+            for t in times:
+                # filter data to specific scenario
+                filtered_data = train_folds[(train_folds["Hour_in_Day"] == t) &
+                                            (train_folds["Day_Type"] == "WD")]
 
+                # create interpolator on training fold
+                train_interp = traffic_interpolator(filtered_data, j, i)
 
+                # now check performance with val fold
+                # get true values
+                val_folds["Mean_Detector_Vol_hr"] = val_folds.groupby(["Site"])["All_Detector_Vol"].transform('mean')
 
+                # remove duplicates of sites
+                # so left with just mean of each site at this hour and day type
+                val_folds = val_folds.drop_duplicates(subset=['Site'])
 
+                # assign matching elev and geometry
+                val_folds["Elev"] = val_folds.apply(site_elev, axis=1)
+                val_folds["geometry"] = val_folds.apply(site_geom, axis=1)
 
+                # isolate latitudes and longitudes
+                lats_val = val_folds["geometry"].apply(lambda q: q.y).copy()
+                lons_val = val_folds["geometry"].apply(lambda q: q.x).copy()
+
+                # convert locations to utm and correct format
+                obs_raw_val = np.asarray(utm.from_latlon(np.asarray(lats_val), np.asarray(lons_val))[0:2])
+                obs_val = np.stack((obs_raw_val[0], obs_raw_val[1]), axis=1)
+
+                # interpolate values for val fold
+                val_interp_results = train_interp(obs_val)
+
+                # true values
+                true = val_folds["Mean_Detector_Vol_hr"].to_numpy()
+
+                # calc mse
+                mse = (np.sum((true - val_interp_results)**2)) / len(true)
+
+                # store mse for this time
+                mse_storage_j.append(mse)
+
+            # store mean mse for this number of neighbours and eps vals
+            mse_storage[k, eps_ind, neigh_ind] = np.mean(mse_storage_j)
