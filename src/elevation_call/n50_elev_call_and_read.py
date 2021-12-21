@@ -1,3 +1,5 @@
+# this script gets and saves elevations for the n50 instance
+
 import pandas as pd
 import networkx as nx
 import momepy
@@ -21,13 +23,20 @@ n50_ids = n50_ids.astype("int64")
 # node lat and long
 n50_geom = nodes["geometry"].loc[nodes.osmid.isin(n50_ids)]
 
+# format as needed
 n50_lat_long = pd.DataFrame({"latitude": n50_geom.y, "longitude": n50_geom.x})
 n50_lat_long = n50_lat_long.reset_index(drop=True)
 
+# save to pickle
 n50_lat_long.to_pickle("data/instance_elevs/n50/n50_lat_long.pkl")
 
+# call function to make elev query file
 create_elev_query_file("data/instance_elevs/n50/n50_lat_long.pkl", "data/instance_elevs/n50/n50_to_query.json")
 
-read_elev_res("data/instance_elevs/n50/n50_query_results.json", "data/instance_elevs/n50/n50_lat_long_elev.pkl")
+# curl command line call:
+# curl -X POST https://api.open-elevation.com/api/v1/lookup -H "Content-Type:application/json" -d "@call_file_data.json" --output results.json
+# call_file_data.json is the name of the file to query
+# results.json is the name of where to save the results file
 
-# TODO comment better
+# call function to process and save elevation results
+read_elev_res("data/instance_elevs/n50/n50_query_results.json", "data/instance_elevs/n50/n50_lat_long_elev.pkl")
