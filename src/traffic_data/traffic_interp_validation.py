@@ -1,8 +1,7 @@
-# import geopandas as gpd
+# script to perform cross validation
+# to find best params for traffic interpolation function
+
 import pandas as pd
-# import matplotlib.pyplot as plt
-# import geoplot as gplt
-# import geoplot.crs as gcrs
 import numpy as np
 import utm
 import scipy.interpolate as interp
@@ -33,21 +32,14 @@ sites_geodf = pd.read_pickle(".\\data\\valid_scats_sites_geom.pkl")
 sites_geodf["SiteID"] = sites_geodf["SiteID"].astype("int64")
 
 
-# match traffic site elev data to traffic data
+# function to match traffic site elev data to traffic data
 def site_elev(row):
     return sites_geodf[sites_geodf["SiteID"] == row["Site"]]["Elev"].iloc[0]
 
 
-# match traffic site geom data to traffic data
+# function to match traffic site geom data to traffic data
 def site_geom(row):
     return sites_geodf[sites_geodf["SiteID"] == row["Site"]]["geometry"].iloc[0]
-
-
-# assign matching elev
-#full_traffic_data["Elev"] = full_traffic_data.apply(site_elev, axis=1)
-
-# assign matching geometry
-#full_traffic_data["geometry"] = full_traffic_data.apply(site_geom, axis=1)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # interpolation function
@@ -81,36 +73,42 @@ def traffic_interpolator(specific_data, num_neighbours, eps):
     vals = specific_data["Mean_Detector_Vol_hr"]
 
     # make interpolator
-    # grbf kernel with epsilon=1 shape parameter
+    # grbf kernel with epsilon shape parameter
     interpolator = interp.RBFInterpolator(obs, vals, neighbors=num_neighbours, kernel="gaussian", epsilon=eps)
 
     return interpolator
 
 # set up values to check
-eps_vals = [0.1, 1, 10, 100]
-num_neighbour_vals = [3, 5, 10, 50]
-times = [6, 9, 12, 15, 18, 21]
+eps_vals = [0.1, 1, 10, 100]  # epsilon
+num_neighbour_vals = [3, 5, 10, 50]  # number of neighbours
+times = [6, 9, 12, 15, 18, 21]  # hour in day to consider
 
-# set up training and testing sites
 K = 10  # number of folds
 R = 5 # number of replicates
-all_sites = np.asarray(full_traffic_data["Site"].unique())
-num_sites = len(full_traffic_data["Site"].unique())
-n_train = int(num_sites*0.85)
-train_sites = np.random.choice(all_sites, size=n_train, replace=False)
-test_sites = all_sites[~np.isin(all_sites, train_sites)]
+
+# set up training and testing sites
+all_sites = np.asarray(full_traffic_data["Site"].unique())  # isolate unique sites
+num_sites = len(full_traffic_data["Site"].unique())  # number of unique sites
+n_train = int(num_sites*0.85)  # number of training sites - 85% of all
+train_sites = np.random.choice(all_sites, size=n_train, replace=False)  # split training set
+test_sites = all_sites[~np.isin(all_sites, train_sites)]  # split test set
 
 # split into training and testing data
 train_data = full_traffic_data[np.isin(full_traffic_data["Site"], train_sites)].copy()
 test_data = full_traffic_data[np.isin(full_traffic_data["Site"], test_sites)].copy()
 
+# set up storage objects for results
 replicate_storage = np.zeros((R, len(eps_vals), len(num_neighbour_vals)))
 mse_storage = np.zeros((K, len(eps_vals), len(num_neighbour_vals)))
+
+# set folds for 10-fold cross val
 folds = np.repeat(np.arange(0, K, 1), np.ceil(n_train/K))
 random.shuffle(folds)  # mutates in place
 folds = folds[0:n_train]
 
+# iterate over replicates
 for r in range(R):
+    # iterate over folds
     for k in range(K):
         # split into train and val fold sites
         train_fold_sites = train_sites[folds != k].copy()
@@ -120,10 +118,15 @@ for r in range(R):
         train_folds = train_data[np.isin(train_data["Site"], train_fold_sites)].copy()
         val_folds = train_data[np.isin(train_data["Site"], val_fold_sites)].copy()
 
+        # iterate over epsilon values
         for eps_ind, i in enumerate(eps_vals):
-            print(i)
+
+            # iterate over number of neighbours
             for neigh_ind, j in enumerate(num_neighbour_vals):
+                # storage object
                 mse_storage_j = []
+
+                # iterate over times to consider
                 for t in times:
                     # filter data to specific scenario
                     filtered_data_train = train_folds[(train_folds["Hour_in_Day"] == t) &
@@ -167,14 +170,24 @@ for r in range(R):
                     # store mse for this time
                     mse_storage_j.append(mse)
 
-                # store mean mse for this number of neighbours and eps vals
+                # store mean mse for this number of neighbours and eps val
                 mse_storage[k, eps_ind, neigh_ind] = np.mean(mse_storage_j)
 
+    # get mean mse over folds for each eps and num_neigh combo and store
     mean_mse_over_folds = np.mean(mse_storage, axis=0)
     replicate_storage[r] = mean_mse_over_folds
 
+# get mean mse for each eps/num_neigh combo over all replicates
 mean_mse_over_reps = np.mean(replicate_storage, axis=0)
 
+# find index of minimum mse
 min_mse_ind = np.argmin(mean_mse_over_reps.flatten())
 
 # therefore use eps=0.1 and num_neighbours=50
+
+# save mean_mse_over_reps array for future reference
+# cols are num_neighbour values
+# rows are eps values
+pd.DataFrame(mean_mse_over_reps).to_csv("data\\interp_cross_val_results.csv")
+
+# test set
