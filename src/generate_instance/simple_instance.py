@@ -87,6 +87,8 @@ dublin.compute_cost(method="copert with meet")
 np.set_printoptions(suppress=True)
 
 dublin.cost_matrix
+dublin.distance_matrix
+dublin.dc_HBEFA
 
 
 # In[1]

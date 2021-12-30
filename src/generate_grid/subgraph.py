@@ -28,12 +28,12 @@ nodes, edges, W = momepy.nx_to_gdf(G, spatial_weights=True)
 nds, eds = nodes, edges
 
 # Bounding box
-#lon_b = (-6.32, -6.21)
-#lat_b = (53.325, 53.365)
+lon_b = (-6.32, -6.21)
+lat_b = (53.325, 53.365)
 
 # M50 bounding box
-lon_b = (-6.391, -6.040)
-lat_b = (53.227, 53.414)
+#lon_b = (-6.391, -6.040)
+#lat_b = (53.227, 53.414)
 
 
 # Drop nodes outside bounding box
@@ -60,9 +60,9 @@ types = np.unique(eds.dropna(subset=['highway'])['highway'].values)
 types
 
 # Only have network of main roads
-main_roads = types[[3, 4, 6, 7, 9, 10, 12, 13, 15, 16]]
-#main_roads = types[[2, 3, 5, 6, 8, 9, 10, 11]]
-#eds = eds[eds['highway'].isin(main_roads)]
+#main_roads = types[[3, 4, 6, 7, 9, 10, 12, 13, 15, 16]]
+main_roads = types[[2, 3, 5, 6, 8, 9, 10, 11]]
+eds = eds[eds['highway'].isin(main_roads)]
 
 
 GG = momepy.gdf_to_nx(eds, approach='primal')
@@ -269,8 +269,8 @@ fig, ax = plt.subplots(1, 1, figsize=(10,10))
 dub_df.plot(ax=ax, color="c", edgecolor="k", alpha=0.4, zorder=2)
 
 # Plot edges and nodes
-eds.plot(ax=ax, alpha=0.2, color="k", linewidth=0.5, zorder=3)
-nds.plot(ax=ax, color='crimson', markersize=1)
+eds.plot(ax=ax, alpha=0.2, color="k", linewidth=2, zorder=3)
+nds.plot(ax=ax, color='crimson', markersize=2)
 
 # Bigger bounding box
 #lon_b = (-6.4759, -6.0843)
@@ -281,18 +281,16 @@ nds.plot(ax=ax, color='crimson', markersize=1)
 #lat_b = (53.325, 53.365)
 
 # Bounds to zoom in on a small cluster (O'Connell Bridge)
-#lon_b = (-6.265, -6.25)
-#lat_b = (53.343, 53.35)
+lon_b = (-6.265, -6.25)
+lat_b = (53.343, 53.35)
 
 # Plot
 plt.xlim(lon_b)
 plt.ylim(lat_b)
 
-plt.savefig("data/figures/Dublin_raw.jpeg", dpi=300)
+#plt.savefig("data/figures/Dublin_raw.jpeg", dpi=300)
+#nx.write_gpickle(GG, "data/subgraphs/full_network.gpickle")
 print(eds.shape)
-print(nx.number_connected_components(GG))
-nds.shape
-nx.write_gpickle(GG, "data/subgraphs/full_network.gpickle")
 plt.show()
 
 
