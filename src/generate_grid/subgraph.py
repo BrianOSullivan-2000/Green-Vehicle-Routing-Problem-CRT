@@ -27,13 +27,17 @@ nodes, edges, W = momepy.nx_to_gdf(G, spatial_weights=True)
 
 nds, eds = nodes, edges
 
-# Bounding box
-lon_b = (-6.32, -6.21)
-lat_b = (53.325, 53.365)
-
 # M50 bounding box
 #lon_b = (-6.391, -6.040)
 #lat_b = (53.227, 53.414)
+
+# City Centre Bounding box
+#lon_b = (-6.32, -6.21)
+#lat_b = (53.325, 53.365)
+
+# South Dublin Bounding box
+lon_b = (-6.375, -6.081)
+lat_b = (53.230, 53.325)
 
 
 # Drop nodes outside bounding box
@@ -60,8 +64,16 @@ types = np.unique(eds.dropna(subset=['highway'])['highway'].values)
 types
 
 # Only have network of main roads
-#main_roads = types[[3, 4, 6, 7, 9, 10, 12, 13, 15, 16]]
-main_roads = types[[2, 3, 5, 6, 8, 9, 10, 11]]
+
+# M50 indices
+# main_roads = types[[3, 4, 6, 7, 9, 10, 12, 13, 15, 16]]
+
+# City Centre indices
+# main_roads = types[[2, 3, 4, 5, 6, 8, 9, 10, 11]]
+
+# South Dublin indices
+main_roads = types[[3, 4, 6, 7, 9, 10, 12, 13, 15, 16]]
+
 eds = eds[eds['highway'].isin(main_roads)]
 
 
@@ -79,7 +91,7 @@ dub_df = dub_df[dub_df["NAME_TAG"]=="Dublin"]
 
 # Remove any small disconnected elements
 
-if nx.number_connected_components(GG) > 1:
+while nx.number_connected_components(GG) > 1:
     for component in list(nx.connected_components(GG)):
         if len(component) <= min([len(l) for l in list(nx.connected_components(GG))]):
             for node in component:
@@ -270,26 +282,18 @@ dub_df.plot(ax=ax, color="c", edgecolor="k", alpha=0.4, zorder=2)
 
 # Plot edges and nodes
 eds.plot(ax=ax, alpha=0.2, color="k", linewidth=2, zorder=3)
-nds.plot(ax=ax, color='crimson', markersize=2)
-
-# Bigger bounding box
-#lon_b = (-6.4759, -6.0843)
-#lat_b = (53.2294, 53.4598)
-
-# Dublin Circular North and South
-#lon_b = (-6.32, -6.21)
-#lat_b = (53.325, 53.365)
+nds.plot(ax=ax, color='crimson', markersize=5)
 
 # Bounds to zoom in on a small cluster (O'Connell Bridge)
-lon_b = (-6.265, -6.25)
-lat_b = (53.343, 53.35)
+#lon_b = (-6.265, -6.25)
+#lat_b = (53.343, 53.35)
 
 # Plot
 plt.xlim(lon_b)
 plt.ylim(lat_b)
 
-#plt.savefig("data/figures/Dublin_raw.jpeg", dpi=300)
-#nx.write_gpickle(GG, "data/subgraphs/full_network.gpickle")
+# plt.savefig("data/figures/dublin_south_junctions.jpeg", dpi=300)
+# nx.write_gpickle(GG, "data/subgraphs/dublin_south_junctions.gpickle")
 print(eds.shape)
 plt.show()
 
@@ -307,7 +311,7 @@ count = 0
 
 
 # Remove shortest edges
-for i in range(1300):
+for i in range(400):
 
     # Get smallest edge and get node coordinates
     edge = eds[eds['length'] == np.min(eds['length'].values)]
@@ -413,10 +417,10 @@ for i in range(1300):
     con_graph = momepy.gdf_to_nx(eds)
     nds, eds = momepy.nx_to_gdf(con_graph)
 
-print(eds.shape)
+print(nds.shape)
 
 
-nx.write_gpickle(con_graph, "data/subgraphs/m50_clean.gpickle")
+# nx.write_gpickle(con_graph, "data/subgraphs/dublin_south_clean.gpickle")
 
 
 # In[1]
@@ -430,7 +434,7 @@ dub_df.plot(ax=ax, color="c", edgecolor="k", alpha=0.4, zorder=2)
 
 # Plot edges and nodes
 eds.plot(ax=ax, alpha=1, color="silver", linewidth=2, zorder=1)
-nds.plot(ax=ax, color='crimson', markersize=10)
+nds.plot(ax=ax, color='crimson', markersize=7)
 
 
 # Dublin Circular North and South
@@ -449,11 +453,25 @@ nds.plot(ax=ax, color='crimson', markersize=10)
 plt.xlim(lon_b)
 plt.ylim(lat_b)
 print(eds.shape)
-#plt.savefig("data/figures/dublin_clean.jpeg", dpi=300)
+# plt.savefig("data/figures/dublin_south_clean.jpeg", dpi=300)
 plt.show()
 
 
 # In[1]
+
+
+#con_graph = nx.read_gpickle("data/subgraphs/city_centre_clean.gpickle")
+
+while nx.number_connected_components(con_graph) > 1:
+    for component in list(nx.connected_components(con_graph)):
+        if len(component) <= min([len(l) for l in list(nx.connected_components(con_graph))]):
+            for node in component:
+                print("node")
+                con_graph.remove_node(node)
+
+# Another graph/gdf reset
+con_graph = momepy.gdf_to_nx(eds)
+nds, eds = momepy.nx_to_gdf(con_graph)
 
 # Add coordinates to eds
 eds['start_coord'] = np.array(con_graph.edges)[:, 0]
@@ -463,7 +481,7 @@ eds['end_coord'] = np.array(con_graph.edges)[:, 1]
 indices = np.arange(np.array(list(con_graph.nodes)).shape[0])
 
 # Pick random IDs and get their coordinates (for networkx)
-sample_ids = np.random.choice(indices, 200, replace=False)
+sample_ids = np.random.choice(indices, 20, replace=False)
 sample_coords = np.array(list(con_graph.nodes))[sample_ids]
 
 
@@ -491,7 +509,7 @@ def closest_node(node, nodes):
     return nodes[closest_index]
 
 # Set a corner for depot (for example bottom left, top right)
-corner = (np.min(sample_coords[:, 0]), np.max(sample_coords[:, 1]))
+corner = (np.mean(sample_coords[:, 0]), np.mean(sample_coords[:, 1]))
 
 # Get depot coordinates and position in current points
 depot = closest_node(corner, sample_coords)
@@ -576,7 +594,7 @@ geom_matrix.index, geom_matrix.columns = coord_list, coord_list
 highway_matrix.index, highway_matrix.columns = coord_list, coord_list
 
 # Look at how sparse it is
-distance_matrix.to_pickle("data/distance_matrices/m50_corner_n200.pkl")
-speed_matrix.to_pickle("data/speed_matrices/m50_corner_n200.pkl")
-geom_matrix.to_pickle("data/geom_matrices/m50_corner_n200.pkl")
-highway_matrix.to_pickle("data/highway_matrices/m50_corner_n200.pkl")
+distance_matrix.to_pickle("data/distance_matrices/dublin_south/centre_n20.pkl")
+speed_matrix.to_pickle("data/speed_matrices/dublin_south/centre_n20.pkl")
+geom_matrix.to_pickle("data/geom_matrices/dublin_south/centre_n20.pkl")
+highway_matrix.to_pickle("data/highway_matrices/dublin_south/centre_n20.pkl")
