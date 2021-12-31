@@ -59,7 +59,7 @@ day_type, hour_in_day, num_neighbours = "WD", 9, 5
 def traffic_interpolator(day_type, hour_in_day, num_neighbours):
     # isolate relevant data
     specific_data = full_traffic_data[(full_traffic_data["Day_Type"] == day_type)
-                                      & (full_traffic_data["Hour_in_Day"] == hour_in_day)].copy
+                                      & (full_traffic_data["Hour_in_Day"] == hour_in_day)].copy()
 
     # take mean of each site for these
     # throws a SettingWithCopyWarning but is ok
@@ -139,7 +139,7 @@ lat_b = (53.25, 53.45)
 h = 0.001
 
 # Save a default test file
-traffic = write_traffic_file("test.pkl", "WD", 9, 5, lon_b, lat_b, h)
+traffic = write_traffic_file("weekend_peak.pkl", "WE", 14, 5, lon_b, lat_b, h)
 
 
 # In[1]

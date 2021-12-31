@@ -16,11 +16,7 @@ from src.elevation_call.read_elev_query_result import read_elev_res
 
 
 # Bounding box for Dublin
-lon_b = (-6.475924, -6.084280)
-lat_b = (53.229386, 53.459765)
-
 # Round to 4 decimals points otherwise not enough memory for grid
-# TODO: look into 5 or 6 decimal points
 lon_b = (-6.4759, -6.0843)
 lat_b = (53.2294, 53.4598)
 
