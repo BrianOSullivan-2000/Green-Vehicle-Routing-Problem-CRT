@@ -373,6 +373,7 @@ class Grid():
 
         # Going with london metrics for now
         gdf['Rain_Correction'] = np.digitize(gdf['Precipitation'], london_bins)
+        gdf.loc[:, 'Rain_Correction'] = gdf['Rain_Correction'].values - 1
         gdf['Rain_Correction'] = np.array([london_vals[idx] for idx in gdf['Rain_Correction']])
 
         # Final output of GeoDataFrame

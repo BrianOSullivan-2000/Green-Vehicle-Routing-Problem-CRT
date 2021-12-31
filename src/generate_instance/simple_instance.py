@@ -71,20 +71,18 @@ dublin.read_driving_cycle("data/WLTP.csv", h=4, hbefa_filename="data/HBEFA_Drivi
 dublin.compute_speed_profile(filename="data/speed_matrices/sparse_n20.pkl")
 dublin.create_geometries("data/geom_matrices/sparse_n20.pkl")
 
-dublin.compute_traffic(filename="data/traffic_matrices/test.pkl")
+dublin.compute_traffic(filename="data/traffic_matrices/weekday_peak.pkl")
 dublin.read_highways(filename="data/highway_matrices/sparse_n20.pkl")
 dublin.compute_level_of_service()
 
 dublin.read_weather(filename="data/weather_matrices/2016-01-28_4pm_tp.pkl")
 dublin.compute_weather_correction()
-dublin.read_skin_temp(filename="data/weather_matrices/2016-01-28_4pm_skt.pkl")
+dublin.read_skin_temp(filename="data/weather_matrices/skt.pkl")
 
 dublin.compute_cost(method="copert with meet")
 np.set_printoptions(suppress=True)
 
 dublin.cost_matrix
-dublin.distance_matrix
-dublin.dc_HBEFA
 
 
 # In[1]

@@ -13,13 +13,48 @@ from shapely.geometry import Polygon
 # Open the ERA5 dataset, just get precipitation
 ds = xr.open_dataset("data/ERA5_JanFeb.nc")
 df = ds.to_dataframe()
-df1 = df['skt'].dropna()
+df1 = df['tp'].dropna()
 df1 = df1.reset_index()
+df1.loc[:, 'tp'] = df1['tp'].values  * 1000
 
-# Lets go with my birthday
-time_idx = df1['time'].iloc[249568]
+
+df1.loc[:, 'longitude'] = np.round(df1['longitude'].values, 2)
+df1.loc[:, 'latitude'] = np.round(df1['latitude'].values, 2)
+
+# Get average temperature for each point in grid
+lons = np.unique(df1['longitude'].values)
+lats = np.unique(df1['latitude'].values)
+xx, yy = np.meshgrid(lons, lats)
+
+points = np.append(xx.reshape(-1,1), yy.reshape(-1,1), axis=1)
+temp = np.zeros(len(points))
+
+for lon in lons:
+    for lat in lats:
+        temps = df1[(df1['longitude'] == lon) & (df1['latitude'] == lat)]['skt'].values
+        if len(temps) > 0:
+
+            temp[np.all(points == np.array((lon, lat)), axis=1)] = np.mean(temps)
+
+names = {"longitude": points[:, 0], "latitude": points[:, 1], "skt":temp}
+gdf = pd.DataFrame(data=names)
+
+time_idx = df1['time'].iloc[1352400]
 gdf = df1[df1['time'] == time_idx]
-gdf.to_pickle("data/weather_matrices/2016-01-28_4pm_skt.pkl")
+
+number = 1350000
+
+for _ in range(100):
+    time_idx = df1['time'].iloc[number]
+    gdf = df1[df1['time'] == time_idx]
+
+    if (np.mean(gdf['tp'].values) < 5) and (np.mean(gdf['tp'].values) > 1):
+        print("nice")
+        print(number)
+
+    number += 48
+
+gdf.to_pickle("data/weather_matrices/2011_02_17_12am_mild_rainfall.pkl")
 
 # Convert to mm
 #gdf.loc[:, 'tp'] = gdf.loc[:, 'tp'] * 1000
@@ -32,6 +67,8 @@ gdf.loc[:, 'skt'] = gdf.loc[:, 'skt'] - 273.15
 lon_b = (-6.7, -6.0)
 lat_b = (53.0, 53.7)
 h = 0.005
+
+# gdf = pd.read_pickle("data/weather_matrices/2016-01-28_4pm_tp.pkl")
 
 # Quick interpolation of weather data, get original points and grid to interpolate over
 lons, lats, prec = gdf['longitude'], gdf['latitude'], gdf['tp']
@@ -94,6 +131,7 @@ london_vals = np.array((1, 1-0.021, 1-0.038, 1-0.06))
 
 # Going with london metrics for now
 i_gdf['Rain_Type'] = np.digitize(i_gdf['Precipitation'], london_bins)
+i_gdf.loc[:, 'Rain_Type'] = i_gdf['Rain_Type'].values - 1
 i_gdf['Rain_Type'] = np.array([london_vals[idx] for idx in i_gdf['Rain_Type']])
 
 

@@ -146,7 +146,7 @@ traffic = write_traffic_file("weekend_peak.pkl", "WE", 14, 5, lon_b, lat_b, h)
 
 
 # Plotting code, read df
-df = pd.read_pickle("data/traffic_matrices/test.pkl")
+df = pd.read_pickle("data/traffic_matrices/weekend_peak.pkl")
 
 # Convert df to geodatafram with point geometry
 geometry = gpd.points_from_xy(df['longitude'], df['latitude'])
