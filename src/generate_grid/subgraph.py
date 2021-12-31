@@ -481,7 +481,7 @@ eds['end_coord'] = np.array(con_graph.edges)[:, 1]
 indices = np.arange(np.array(list(con_graph.nodes)).shape[0])
 
 # Pick random IDs and get their coordinates (for networkx)
-sample_ids = np.random.choice(indices, 20, replace=False)
+sample_ids = np.random.choice(indices, 50, replace=False)
 sample_coords = np.array(list(con_graph.nodes))[sample_ids]
 
 
@@ -509,7 +509,7 @@ def closest_node(node, nodes):
     return nodes[closest_index]
 
 # Set a corner for depot (for example bottom left, top right)
-corner = (np.mean(sample_coords[:, 0]), np.mean(sample_coords[:, 1]))
+corner = (np.max(sample_coords[:, 0]), np.max(sample_coords[:, 1]))
 
 # Get depot coordinates and position in current points
 depot = closest_node(corner, sample_coords)
@@ -594,7 +594,7 @@ geom_matrix.index, geom_matrix.columns = coord_list, coord_list
 highway_matrix.index, highway_matrix.columns = coord_list, coord_list
 
 # Look at how sparse it is
-distance_matrix.to_pickle("data/distance_matrices/dublin_south/centre_n20.pkl")
-speed_matrix.to_pickle("data/speed_matrices/dublin_south/centre_n20.pkl")
-geom_matrix.to_pickle("data/geom_matrices/dublin_south/centre_n20.pkl")
-highway_matrix.to_pickle("data/highway_matrices/dublin_south/centre_n20.pkl")
+distance_matrix.to_pickle("data/distance_matrices/dublin_south/corner_n50.pkl")
+speed_matrix.to_pickle("data/speed_matrices/dublin_south/corner_n50.pkl")
+geom_matrix.to_pickle("data/geom_matrices/dublin_south/corner_n50.pkl")
+highway_matrix.to_pickle("data/highway_matrices/dublin_south/corner_n50.pkl")
