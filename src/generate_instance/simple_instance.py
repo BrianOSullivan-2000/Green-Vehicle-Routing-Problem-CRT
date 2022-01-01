@@ -13,35 +13,15 @@ import osmnx as ox
 import utm
 from src.elevation_call.create_evel_query_file import create_elev_query_file
 from src.elevation_call.read_elev_query_result import read_elev_res
+import src.generate_tsplib.generate_tsplib as tsp
 
 
-# Bounding box for Dublin
-# Round to 4 decimals points otherwise not enough memory for grid
-lon_b = (-6.4759, -6.0843)
-lat_b = (53.2294, 53.4598)
+# In[1]
 
-# Step size
-h = 0.0001
-
-# Make the Grid
-dublin = grid.Grid(lon_b=lon_b, lat_b=lat_b, h=h)
 
 # Scat site testing data
 ds = pd.read_pickle("data/scats_sites_with_elev.pkl")
 ds = ds.loc[:, "Lat":"Elev"]
-
-# Vertices
-vdf = pd.read_pickle("data/distance_matrices/sparse_n20.pkl")
-vpoints = list(vdf.columns)
-
-vpoints = np.round(np.array(vpoints), 4)
-
-
-# We can get the elevations directly from open elevation instead of interpolating (TODO: ask others how to do this)
-vdf = pd.DataFrame(vpoints, columns=['longitude', 'latitude'])
-#vdf.to_pickle("data/instance_elevs/n20/n20_lat_long.pkl")
-#create_elev_query_file("data/instance_elevs/n20/n20_lat_long.pkl", "data/instance_elevs/n20/n20_to_query.json")
-
 
 # Clean data up a little
 ds = ds.drop(ds[ds['Long']==0].index)
@@ -52,54 +32,101 @@ ds = ds.drop(ds[ds['Lat']>53.45976].index)
 ds = ds.drop(ds[ds['Lat']<53.22938].index)
 ds = ds[["Long", "Lat", "Elev"]]
 
-
 # round values to grid values
 epoints = np.round(ds.to_numpy(), 4)
 
-# add points to grid
-dublin.add_elevation_points(epoints)
-dublin.add_vertices(vpoints)
-dublin.create_interpolation(epoints, k=5, p=4)
+# Bounding box for Dublin
+# Round to 4 decimals points otherwise not enough memory for grid
+lon_b = (-6.4759, -6.0843)
+lat_b = (53.2294, 53.4598)
 
-# create df for grid
-dublin.create_df()
+# Step size
+h = 0.0001
 
-# compute matrices for various edges
-dublin.compute_distance(mode="OSM", filename="data/distance_matrices/sparse_n20.pkl")
-dublin.compute_gradient()
-dublin.read_driving_cycle("data/WLTP.csv", h=4, hbefa_filename="data/HBEFA_Driving_Cycles.pkl")
-dublin.compute_speed_profile(filename="data/speed_matrices/sparse_n20.pkl")
-dublin.create_geometries("data/geom_matrices/sparse_n20.pkl")
+def create_instance(n, depot, traffic, rain):
+    # Make the Grid
+    dublin = grid.Grid(lon_b=lon_b, lat_b=lat_b, h=h)
 
-dublin.compute_traffic(filename="data/traffic_matrices/weekday_peak.pkl")
-dublin.read_highways(filename="data/highway_matrices/sparse_n20.pkl")
-dublin.compute_level_of_service()
 
-dublin.read_weather(filename="data/weather_matrices/2016-01-28_4pm_tp.pkl")
-dublin.compute_weather_correction()
-dublin.read_skin_temp(filename="data/weather_matrices/skt.pkl")
+    # add points to grid
+    dublin.add_elevation_points(epoints)
+    dublin.create_interpolation(epoints, k=8, p=2)
 
-dublin.compute_cost(method="copert with meet")
-np.set_printoptions(suppress=True)
+    n = n
+    v_file = "dublin_centre/{}_n{}.pkl".format(depot, n)
 
-dublin.cost_matrix
+    # Vertices
+    vdf = pd.read_pickle("data/distance_matrices/{}".format(v_file))
+    vpoints = list(vdf.columns)
+    vpoints = np.round(np.array(vpoints), 4)
+
+    # We can get the elevations directly from open elevation instead of interpolating (TODO: ask others how to do this)
+    vdf = pd.DataFrame(vpoints, columns=['longitude', 'latitude'])
+    #vdf.to_pickle("data/instance_elevs/n20/n20_lat_long.pkl")
+    #create_elev_query_file("data/instance_elevs/n20/n20_lat_long.pkl", "data/instance_elevs/n20/n20_to_query.json")
+    dublin.add_vertices(vpoints)
+
+
+    # create df for grid
+    dublin.create_df()
+
+    # compute matrices for various edges
+    dublin.compute_distance(mode="OSM", filename="data/distance_matrices/{}".format(v_file))
+    dublin.compute_gradient()
+    dublin.read_driving_cycle("data/WLTP.csv", h=4, hbefa_filename="data/HBEFA_Driving_Cycles.pkl")
+    dublin.compute_speed_profile(filename="data/speed_matrices/{}".format(v_file))
+    dublin.create_geometries("data/geom_matrices/{}".format(v_file))
+
+    dublin.compute_traffic(filename="data/traffic_matrices/{}.pkl".format(traffic))
+    dublin.read_highways(filename="data/highway_matrices/{}".format(v_file))
+    dublin.compute_level_of_service()
+
+    dublin.read_weather(filename="data/weather_matrices/{}.pkl".format(rain))
+    dublin.compute_weather_correction()
+    dublin.read_skin_temp(filename="data/weather_matrices/Skin_temperature_averages.pkl")
+
+    dublin.compute_cost(method="copert with meet")
+    np.set_printoptions(suppress=True)
+
+    return dublin
 
 
 # In[1]
 
 
-import src.generate_tsplib.generate_tsplib as tsp
+ns = ["20", "50", "100", "200", "500", "1000"]
+depots = ["centre", "corner"]
+traffics = ["weekday_offpeak", "weekday_peak", "weekend_peak"]
+rains = ["heavy", "mild", "low"]
 
-nodes = dublin.df[dublin.df['is_vertice'] != 0].values
-nodes = nodes[:, 0:2]
-edge_weights = dublin.cost_matrix.to_numpy()
+for n in ns:
+    for depot in depots:
+        for traffic in traffics:
+            for rain in rains:
 
+                dublin = create_instance(n, depot, traffic, rain)
 
-tsp.generate_tsplib(filename="instances/sample_n20", instance_name="instance", capacity=100, edge_weight_type="EXPLICIT", edge_weight_format="FULL_MATRIX",
-                    nodes=nodes, demand=np.ones(len(nodes)), depot_index=[0], edge_weights=edge_weights)
+                nodes = dublin.df[dublin.df['is_vertice'] != 0].values
+                nodes = nodes[:, 0:2]
+                edge_weights = dublin.cost_matrix.to_numpy()
+
+                if traffic == "weekday_offpeak":
+                    t = "wdo"
+                elif traffic == "weekday_peak":
+                    t = "wdp"
+                elif traffic == "weekend_peak":
+                    t = "wep"
+
+                filename = "instances/dublin_centre/{}_rainfall/{}/{}_n{}".format(rain, traffic, depot, n)
+                instance_name = "DC_{}_{}_{}_n{}".format(depot[0:2], rain[0], t, n)
+
+                tsp.generate_tsplib(filename=filename, instance_name=instance_name, capacity=100,
+                                    edge_weight_type="EXPLICIT", edge_weight_format="SPARSE_MATRIX", nodes=nodes,
+                                    demand=np.random.randint(1,4,len(nodes)), depot_index=[0], edge_weights=edge_weights)
 
 
 # In[1]
+
 
 lon_b = (-6.33, -6.19)
 lat_b = (53.315, 53.37)

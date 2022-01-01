@@ -298,7 +298,6 @@ class Grid():
 
         # Read in file and convert to mm
         self.weather = pd.read_pickle(filename)
-        self.weather.loc[:, 'tp'] = self.weather.loc[:, 'tp'] * 1000
 
         lons, lats, prec = self.weather['longitude'], self.weather['latitude'], self.weather['tp']
 
@@ -671,7 +670,12 @@ class Grid():
 
                         # Get highway and speed of line (row, column index for lund/vasteras ranges)
                         highway = self.highway_matrix.loc[[idx], [col_idx]].values[0, 0]
-                        highway_idx = np.where(highway_types == highway)[0][0]
+                        
+                        try:
+                            highway_idx = np.where(highway_types == highway)[0][0]
+                        except:
+                            highway_idx = np.where(highway_types == highway)[0]
+
                         spl = self.speed_limit_matrix.loc[[idx], [col_idx]].values
                         los_spl_idx = np.digitize(spl, los_spl_bins)[0][0]
 

@@ -19,16 +19,16 @@ def generate_tsplib(filename, instance_name, capacity, edge_weight_type, edge_we
     with open(filename + ".gvrp", "w") as f:
         print("NAME: ", instance_name, file=f)
         print("COMMENT: this is testing the generating format", file=f)
-        print("TYPE: GVRP", file=f)
+        print("TYPE:  GVRP", file=f)
         print("DIMENSION: ", len(nodes), file=f)
         print("CAPACITY: ", capacity, file=f)
         # note left_graph_type unspecified as all graphs complete
-        print("EDGE_TYPE: DIRECTED", file=f)
+        print("EDGE_TYPE:  DIRECTED", file=f)
         print("EDGE_WEIGHT_TYPE: ", edge_weight_type, file=f)
         print("EDGE_WEIGHT_FORMAT: ", edge_weight_format, file=f)
         # left edge_data_format unspecified as all graphs complete
         # left node_type unspecified as nodes unweighted?
-        print("NODE_COORD_TYPE: TWOD_COORDS", file=f)  # 2d coords specified
+        print("NODE_COORD_TYPE:  TWOD_COORDS", file=f)  # 2d coords specified
         # display_data_type left unspecified - change if needed
         print("NODE_COORD_SECTION", file=f)
         for i in range(len(nodes)):
@@ -51,6 +51,9 @@ def generate_tsplib(filename, instance_name, capacity, edge_weight_type, edge_we
             for i in range(len(edge_weights)):
                 print(i, edge_weights[i][0], edge_weights[i][1], edge_weights[i][2], file=f)
         if edge_weight_format == "FULL_MATRIX":
+            with np.printoptions(threshold=np.inf):
+                print(edge_weights, file=f)
+        if edge_weight_format == "SPARSE_MATRIX":
             with np.printoptions(threshold=np.inf):
                 print(edge_weights, file=f)
         print("EOF", file=f)
