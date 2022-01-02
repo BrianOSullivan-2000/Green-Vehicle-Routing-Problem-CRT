@@ -37,23 +37,24 @@ epoints = np.round(ds.to_numpy(), 4)
 
 # Bounding box for Dublin
 # Round to 4 decimals points otherwise not enough memory for grid
-lon_b = (-6.4759, -6.0843)
-lat_b = (53.2294, 53.4598)
+lon_b = (-6.5, -6)
+lat_b = (53.1, 53.5)
 
 # Step size
 h = 0.0001
 
+n, depot, traffic, rain = "200", "centre", "weekday_offpeak", "heavy"
+
 def create_instance(n, depot, traffic, rain):
+
     # Make the Grid
     dublin = grid.Grid(lon_b=lon_b, lat_b=lat_b, h=h)
-
 
     # add points to grid
     dublin.add_elevation_points(epoints)
     dublin.create_interpolation(epoints, k=8, p=2)
 
-    n = n
-    v_file = "dublin_centre/{}_n{}.pkl".format(depot, n)
+    v_file = "dublin_south/{}_n{}.pkl".format(depot, n)
 
     # Vertices
     vdf = pd.read_pickle("data/distance_matrices/{}".format(v_file))
@@ -65,7 +66,6 @@ def create_instance(n, depot, traffic, rain):
     #vdf.to_pickle("data/instance_elevs/n20/n20_lat_long.pkl")
     #create_elev_query_file("data/instance_elevs/n20/n20_lat_long.pkl", "data/instance_elevs/n20/n20_to_query.json")
     dublin.add_vertices(vpoints)
-
 
     # create df for grid
     dublin.create_df()
@@ -94,8 +94,8 @@ def create_instance(n, depot, traffic, rain):
 # In[1]
 
 
-ns = ["20", "50", "100", "200", "500", "1000"]
-depots = ["centre", "corner"]
+ns = ["500"]
+depots = ["corner"]
 traffics = ["weekday_offpeak", "weekday_peak", "weekend_peak"]
 rains = ["heavy", "mild", "low"]
 
@@ -117,8 +117,10 @@ for n in ns:
                 elif traffic == "weekend_peak":
                     t = "wep"
 
-                filename = "instances/dublin_centre/{}_rainfall/{}/{}_n{}".format(rain, traffic, depot, n)
-                instance_name = "DC_{}_{}_{}_n{}".format(depot[0:2], rain[0], t, n)
+                filename = "instances/dublin_south/{}_rainfall/{}/{}_n{}".format(rain, traffic, depot, n)
+                instance_name = "DS_{}_{}_{}_n{}".format(depot[0:2], rain[0], t, n)
+
+                print(instance_name)
 
                 tsp.generate_tsplib(filename=filename, instance_name=instance_name, capacity=100,
                                     edge_weight_type="EXPLICIT", edge_weight_format="SPARSE_MATRIX", nodes=nodes,

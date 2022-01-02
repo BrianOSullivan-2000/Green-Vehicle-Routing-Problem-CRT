@@ -373,6 +373,9 @@ class Grid():
         # Going with london metrics for now
         gdf['Rain_Correction'] = np.digitize(gdf['Precipitation'], london_bins)
         gdf.loc[:, 'Rain_Correction'] = gdf['Rain_Correction'].values - 1
+
+        # Remove NaNs
+        gdf.loc[(gdf["Rain_Correction"] == 4).values, "Rain_Correction"] = 0
         gdf['Rain_Correction'] = np.array([london_vals[idx] for idx in gdf['Rain_Correction']])
 
         # Final output of GeoDataFrame
@@ -670,7 +673,7 @@ class Grid():
 
                         # Get highway and speed of line (row, column index for lund/vasteras ranges)
                         highway = self.highway_matrix.loc[[idx], [col_idx]].values[0, 0]
-                        
+
                         try:
                             highway_idx = np.where(highway_types == highway)[0][0]
                         except:

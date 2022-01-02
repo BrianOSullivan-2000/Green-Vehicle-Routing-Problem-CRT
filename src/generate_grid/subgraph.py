@@ -303,6 +303,8 @@ plt.show()
 
 # Code for contracting edges, simplifies node clusters in graph
 
+GG = nx.read_gpickle("data/subgraphs/dublin_south_junctions.gpickle")
+
 # Make new graph to iterate over
 con_graph = GG.copy()
 nds, eds = momepy.nx_to_gdf(GG)
@@ -311,7 +313,7 @@ count = 0
 
 
 # Remove shortest edges
-for i in range(400):
+for i in range(500):
 
     # Get smallest edge and get node coordinates
     edge = eds[eds['length'] == np.min(eds['length'].values)]
@@ -438,8 +440,8 @@ nds.plot(ax=ax, color='crimson', markersize=7)
 
 
 # Dublin Circular North and South
-#lon_b = (-6.32, -6.21)
-#lat_b = (53.325, 53.365)
+lon_b = (-6.4, -6.07)
+lat_b = (53.2, 53.33)
 
 # O'Connell Bridge
 #lon_b = (-6.265, -6.25)
@@ -452,7 +454,7 @@ nds.plot(ax=ax, color='crimson', markersize=7)
 # Plot
 plt.xlim(lon_b)
 plt.ylim(lat_b)
-print(eds.shape)
+print(nds.shape)
 # plt.savefig("data/figures/dublin_south_clean.jpeg", dpi=300)
 plt.show()
 
@@ -460,7 +462,7 @@ plt.show()
 # In[1]
 
 
-#con_graph = nx.read_gpickle("data/subgraphs/city_centre_clean.gpickle")
+# con_graph = nx.read_gpickle("data/subgraphs/city_centre_clean.gpickle")
 
 while nx.number_connected_components(con_graph) > 1:
     for component in list(nx.connected_components(con_graph)):
@@ -481,7 +483,7 @@ eds['end_coord'] = np.array(con_graph.edges)[:, 1]
 indices = np.arange(np.array(list(con_graph.nodes)).shape[0])
 
 # Pick random IDs and get their coordinates (for networkx)
-sample_ids = np.random.choice(indices, 50, replace=False)
+sample_ids = np.random.choice(indices, 500, replace=False)
 sample_coords = np.array(list(con_graph.nodes))[sample_ids]
 
 
@@ -586,7 +588,6 @@ for i in range(geom_matrix.shape[0]):
         geom_matrix.iloc[j, i] = geom_matrix.iloc[i, j]
         highway_matrix.iloc[j, i] = highway_matrix.iloc[i, j]
 
-
 # Add cordinates as columns and indices
 distance_matrix.index, distance_matrix.columns = coord_list, coord_list
 speed_matrix.index, speed_matrix.columns = coord_list, coord_list
@@ -594,7 +595,7 @@ geom_matrix.index, geom_matrix.columns = coord_list, coord_list
 highway_matrix.index, highway_matrix.columns = coord_list, coord_list
 
 # Look at how sparse it is
-distance_matrix.to_pickle("data/distance_matrices/dublin_south/corner_n50.pkl")
-speed_matrix.to_pickle("data/speed_matrices/dublin_south/corner_n50.pkl")
-geom_matrix.to_pickle("data/geom_matrices/dublin_south/corner_n50.pkl")
-highway_matrix.to_pickle("data/highway_matrices/dublin_south/corner_n50.pkl")
+distance_matrix.to_pickle("data/distance_matrices/dublin_south/corner_n500.pkl")
+speed_matrix.to_pickle("data/speed_matrices/dublin_south/corner_n500.pkl")
+geom_matrix.to_pickle("data/geom_matrices/dublin_south/corner_n500.pkl")
+highway_matrix.to_pickle("data/highway_matrices/dublin_south/corner_n500.pkl")
