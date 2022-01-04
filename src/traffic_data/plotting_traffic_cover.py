@@ -144,9 +144,11 @@ traffic = write_traffic_file("weekend_peak.pkl", "WE", 14, 5, lon_b, lat_b, h)
 
 # In[1]
 
+import geopandas as gpd
+import matplotlib.pyplot as plt
 
 # Plotting code, read df
-df = pd.read_pickle("data/traffic_matrices/weekend_peak.pkl")
+df = pd.read_pickle("data/traffic_matrices/weekday_peak.pkl")
 
 # Convert df to geodatafram with point geometry
 geometry = gpd.points_from_xy(df['longitude'], df['latitude'])
@@ -158,20 +160,26 @@ dub_df = gpd.read_file("../Brians_Lab/data/counties.shp")
 dub_df = dub_df.set_crs(epsg=4326)
 dub_df = dub_df[dub_df["NAME_TAG"]=="Dublin"]
 
+dub_df = dub_df.to_crs('epsg:4326')
+gdf = gdf.to_crs('epsg:4326')
 # Make GeoDataFrame smaller for performance
 #gdf = gdf.iloc[::10, :]
+
+gdf = gpd.sjoin(gdf, dub_df).iloc[:, 0:2]
+
 
 # Plotting
 fig, ax = plt.subplots(1, 1, figsize=(10,10))
 dub_df.plot(ax=ax, color='none', edgecolor="k", alpha=1, zorder=3)
 
-gdf.plot(ax=ax, column='traffic',  cmap='viridis', marker=',', markersize=5,
-             alpha=1, zorder=2, legend=True)
-
-
+gdf.plot(ax=ax, column='traffic',  cmap='plasma', marker=',', markersize=5,
+             alpha=1, zorder=2, legend=True, vmin=0, vmax=5000)
 # Plot
 plt.xlim(lon_b)
 plt.ylim(lat_b)
+
+plt.title("Mean Hourly Site Vehicle Count, Weekday 9am", size=15)
+# plt.savefig("data/figures/Dublin_traffic_fig.jpeg", dpi=300)
 plt.show()
 
 

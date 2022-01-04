@@ -43,18 +43,18 @@ lat_b = (53.1, 53.5)
 # Step size
 h = 0.0001
 
-n, depot, traffic, rain = "200", "centre", "weekday_offpeak", "heavy"
+n, depot, traffic, rain = "1000", "centre", "weekday_offpeak", "heavy"
 
 def create_instance(n, depot, traffic, rain):
 
     # Make the Grid
     dublin = grid.Grid(lon_b=lon_b, lat_b=lat_b, h=h)
 
-    # add points to grid
-    dublin.add_elevation_points(epoints)
-    dublin.create_interpolation(epoints, k=8, p=2)
+    v_file = "dublin_centre/{}_n{}.pkl".format(depot, n)
 
-    v_file = "dublin_south/{}_n{}.pkl".format(depot, n)
+    # add points to grid
+    dublin.add_elevation_points(epoints, filename="data/elevation_matrices/{}".format(v_file))
+    dublin.create_interpolation(k=6, p=2)
 
     # Vertices
     vdf = pd.read_pickle("data/distance_matrices/{}".format(v_file))
@@ -94,8 +94,8 @@ def create_instance(n, depot, traffic, rain):
 # In[1]
 
 
-ns = ["500"]
-depots = ["corner"]
+ns = ["20", "50", "100", "200", "500", "1000"]
+depots = ["centre", "corner"]
 traffics = ["weekday_offpeak", "weekday_peak", "weekend_peak"]
 rains = ["heavy", "mild", "low"]
 
@@ -117,10 +117,16 @@ for n in ns:
                 elif traffic == "weekend_peak":
                     t = "wep"
 
-                filename = "instances/dublin_south/{}_rainfall/{}/{}_n{}".format(rain, traffic, depot, n)
-                instance_name = "DS_{}_{}_{}_n{}".format(depot[0:2], rain[0], t, n)
+                filename = "instances/dublin_centre/{}_rainfall/{}/{}_n{}".format(rain, traffic, depot, n)
+                instance_name = "DC_{}_{}_{}_n{}".format(depot[0:2], rain[0], t, n)
 
                 print(instance_name)
+
+                a1 = dublin.cost_matrix.values.flatten()[dublin.cost_matrix.values.flatten() != 0].shape[0]
+                a2 = dublin.distance_matrix.values.flatten()[dublin.distance_matrix.values.flatten() != 0].shape[0]
+
+                if a1 != a2:
+                    print("{} has a bug")
 
                 tsp.generate_tsplib(filename=filename, instance_name=instance_name, capacity=100,
                                     edge_weight_type="EXPLICIT", edge_weight_format="SPARSE_MATRIX", nodes=nodes,
@@ -130,13 +136,14 @@ for n in ns:
 # In[1]
 
 
-lon_b = (-6.33, -6.19)
-lat_b = (53.315, 53.37)
+#lon_b = (-6.33, -6.19)
+#lat_b = (53.315, 53.37)
 
 df = dublin.df[(dublin.df['x'] > lon_b[0]) & (dublin.df['x'] < lon_b[1])]
 df = df[(df['y'] > lat_b[0]) & (df['y'] < lat_b[1])]
 
-df = df.iloc[::10]
+df = df.sample(frac=0.02)
+#df = df.iloc[::50]
 
 # Make dataframe
 names = {'Elevation':df['elevation'], 'longitude':df['x'], 'latitude':df['y']}
@@ -161,13 +168,18 @@ dub_df = gpd.read_file("../Brians_Lab/data/counties.shp")
 dub_df = dub_df.set_crs(epsg=4326)
 dub_df = dub_df[dub_df["NAME_TAG"]=="Dublin"]
 
+gdf = gpd.sjoin(gdf, dub_df).iloc[:, 0:2]
 
 line_geom = dublin.geom_matrix.values.flatten()
 
 costs = dublin.cost_matrix.values.flatten()[dublin.cost_matrix.values.flatten() != 0]
 line_geoms = dublin.geom_matrix.values.flatten()[dublin.geom_matrix.values.flatten() != 0]
 
+costs.shape
+
+dublin.stop_percentages_matrix.values.flatten()[dublin.stop_percentages_matrix.values.flatten() != 0].shape
 line_gdf = gpd.GeoDataFrame(data=costs, geometry=line_geoms, crs={'init' : 'epsg:4326'})
+
 
 # In[1]
 
@@ -179,7 +191,7 @@ node_elevs = df['Elevation'].values
 
 # Plot elevations
 gdf.plot(ax=ax, column='Elevation', cmap='terrain', vmin = min(node_elevs), vmax = max(node_elevs),
-         marker=',', markersize=10, legend=True, alpha=0.7, zorder=1)
+         marker=',', markersize=15, legend=True, alpha=0.7, zorder=1)
 
 # Plot rainfall
 #dublin.weather.plot(ax=ax, column='Precipitation', cmap='Blues', legend=True,
@@ -195,6 +207,7 @@ dub_df.plot(ax=ax, color="none", edgecolor="k", alpha=0.5, zorder=2)
 # Plot vertices
 gdf_v.plot(ax=ax, color="k", marker=',', markersize=5, zorder=5)
 
+# Plot edges
 line_gdf.plot(ax=ax, alpha=1, color="k", linewidth=1, zorder=6)
 
 # Can label vertices of points
@@ -202,14 +215,14 @@ line_gdf.plot(ax=ax, alpha=1, color="k", linewidth=1, zorder=6)
     #ax.annotate(label, xy=(x, y), xytext=(3, 3), textcoords="offset points")
 
 # Bounds for limits
-#lon_b = (-6.35, -6.15)
-#lat_b = (53.25, 53.4)
+lon_b = (-6.42, -6.10)
+lat_b = (53.25, 53.45)
 
-lon_b = (-6.33, -6.19)
-lat_b = (53.315, 53.37)
+#lon_b = (-6.33, -6.19)
+#lat_b = (53.315, 53.37)
 
 # Plot
 plt.xlim(lon_b)
 plt.ylim(lat_b)
-
+plt.title("Elevation Map of Dublin (m above sea-level)")
 plt.show()

@@ -56,17 +56,15 @@ for _ in range(100):
 
 gdf.to_pickle("data/weather_matrices/2011_02_17_12am_mild_rainfall.pkl")
 
-# Convert to mm
-#gdf.loc[:, 'tp'] = gdf.loc[:, 'tp'] * 1000
+gdf = pd.read_pickle("data/weather_matrices/low.pkl")
 
 # Convert to Celsius
-gdf.loc[:, 'skt'] = gdf.loc[:, 'skt'] - 273.15
-
+# gdf.loc[:, 'skt'] = gdf.loc[:, 'skt'] - 273.15
 
 # Bounds
-lon_b = (-6.7, -6.0)
-lat_b = (53.0, 53.7)
-h = 0.005
+lon_b = (-6.42, -6.10)
+lat_b = (53.25, 53.45)
+h = 0.001
 
 # gdf = pd.read_pickle("data/weather_matrices/2016-01-28_4pm_tp.pkl")
 
@@ -158,11 +156,12 @@ else:
 
 # In[1]
 
+i_gdf = gpd.sjoin(i_gdf, dub_df).iloc[:, 0:2]
 
 # Raw data
-geometry = gpd.points_from_xy(gdf['longitude'], gdf['latitude'])
-names = {'Precipitation':gdf['tp'], 'longitude':gdf['longitude'], 'latitude':gdf['latitude']}
-gdf = gpd.GeoDataFrame(pd.DataFrame(data=names), columns=['Precipitation'], geometry=geometry, crs={'init' : 'epsg:4326'})
+# geometry = gpd.points_from_xy(gdf['longitude'], gdf['latitude'])
+# names = {'Precipitation':gdf['tp'], 'longitude':gdf['longitude'], 'latitude':gdf['latitude']}
+# gdf = gpd.GeoDataFrame(pd.DataFrame(data=names), columns=['Precipitation'], geometry=geometry, crs={'init' : 'epsg:4326'})
 
 
 # Get the map overlay of Dublin
@@ -191,15 +190,17 @@ i_gdf.plot(ax=ax, column='Precipitation', cmap='Blues', legend=True,
 #            vmin=0, vmax=np.max(i_gdf['Rain_Type']))
 
 
-gdf.plot(ax=ax, column='Precipitation',  cmap='Blues', marker=',', markersize=5,
-         vmin=0, vmax=np.max(i_gdf['Precipitation']), alpha=1, zorder=2)
+# gdf.plot(ax=ax, column='Precipitation',  cmap='Blues', marker=',', markersize=5,
+#          vmin=0, vmax=np.max(i_gdf['Precipitation']), alpha=1, zorder=2)
 
-ggdf.plot(ax=ax, color='k', markersize=10, zorder=3)
+# ggdf.plot(ax=ax, color='k', markersize=10, zorder=3)
 
 # Bounds for limits
-#lon_b = (-6.4759, -6.0843)
-#lat_b = (53.2294, 53.4598)
+lon_b = (-6.42, -6.10)
+lat_b = (53.25, 53.45)
 
-#plt.xlim(lon_b)
-#plt.ylim(lat_b)
+plt.xlim(lon_b)
+plt.ylim(lat_b)
+plt.title("ERA5 Midday Rainfall 17th February 2011 (mm)", size=15)
+# plt.savefig("data/figures/Dublin_rainfall_fig.jpeg", dpi=300)
 plt.show()

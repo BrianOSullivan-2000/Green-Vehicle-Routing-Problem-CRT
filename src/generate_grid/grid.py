@@ -47,7 +47,7 @@ class Grid():
 
 
 
-    def add_elevation_points(self, data):
+    def add_elevation_points(self, data, filename=None):
         """ Add elevation values to points as described by input data
 
         data - numpy array of points, points have shape (x, y, elevation)
@@ -62,6 +62,22 @@ class Grid():
 
             if np.all(index):
                 self.elevation[index[0][0], index[1][0]] = i[2]
+
+
+        # We can also directly query the vertex elevations from open elevations
+        if filename:
+            # Read open elevation api elevations data
+            df = pd.read_pickle(filename)
+
+            coords = np.round(df.to_numpy()[:, [1, 0, 2]], 4)
+
+            for i in coords:
+
+                # Find corresponding index for lon, lat
+                index = (np.where(self.x == i[0])[0], np.where(self.y == i[1])[0])
+
+                if np.all(index):
+                    self.elevation[index[0][0], index[1][0]] = i[2]
 
 
 
@@ -89,7 +105,7 @@ class Grid():
 
 
 
-    def create_interpolation(self, data, k=10, p=2):
+    def create_interpolation(self, k=10, p=2):
         """ Take in input data and interpolate elevations over entire grid.
             Interpolation carried out with IDW2 method.
 
@@ -98,7 +114,8 @@ class Grid():
         import scipy.interpolate as interp
 
         # Get lats and lons and convert to grid with utm projection
-        lons, lats = data[:, 0], data[:, 1]
+        lons, lats = self.xx[self.elevation != 0], self.yy[self.elevation != 0]
+        elevs = self.elevation[self.elevation != 0]
 
         # Convert both input points and gridpoints to correct grid using UTM projection
         obs_raw = np.asarray(utm.from_latlon(np.asarray(lats), np.asarray(lons))[0:2])
@@ -117,14 +134,14 @@ class Grid():
         w = 1.0 / d**p
 
         # Compute weighted averages for each gridpoint
-        weighted_averages = np.sum(w * data[:, 2][inds], axis=1) / np.sum(w, axis=1)
+        weighted_averages = np.sum(w * elevs[inds], axis=1) / np.sum(w, axis=1)
 
         # Set elevation to each gridpoint
         self.elevation = np.reshape(weighted_averages, (len(self.x), len(self.y)))
 
         # Input datapoints are not included in interpolation
         # input them manually
-        self.add_elevation_points(data)
+        self.add_elevation_points(np.column_stack((lons, lats, elevs)))
 
 
 
@@ -649,6 +666,10 @@ class Grid():
         # Get just ranges
         self.lund_vasteras_ranges = self.lund_vasteras_ranges.iloc[:, 1:]
 
+
+        self.rec_err = 0
+        self.no_entry = 0
+
         for idx, row in self.lund_vasteras_ranges.iterrows():
             self.lund_vasteras_ranges.loc[idx] = row.str.split(", ")
             self.lund_vasteras_ranges.loc[idx] = np.array(self.lund_vasteras_ranges.loc[idx])
@@ -666,29 +687,27 @@ class Grid():
                     # Find all intersecting rectanges in weather grid
                     inter_recs = self.traffic[self.traffic.intersects(line)]
 
+                    # Get column index from geom_matrix
+                    col_idx = row[row == line].index[0]
+
+                    # Get highway and speed of line (row, column index for lund/vasteras ranges)
+                    highway = self.highway_matrix.loc[[idx], [col_idx]].values[0, 0]
+
+                    try:
+                        highway_idx = np.where(highway_types == highway)[0][0]
+                    except:
+                        highway_idx = np.where(highway_types == highway)[0]
+
+                    # Speed limit and LoS indices for HBEFA dcs
+                    spl = self.speed_limit_matrix.loc[[idx], [col_idx]].values
+                    dc_spl_idx = np.digitize(spl, dc_spl_bins)[0][0]
+                    los_spl_idx = np.digitize(spl, los_spl_bins)[0][0]
+
                     if inter_recs.shape[0] > 0:
-
-                        # Get column index from geom_matrix
-                        col_idx = row[row == line].index[0]
-
-                        # Get highway and speed of line (row, column index for lund/vasteras ranges)
-                        highway = self.highway_matrix.loc[[idx], [col_idx]].values[0, 0]
-
-                        try:
-                            highway_idx = np.where(highway_types == highway)[0][0]
-                        except:
-                            highway_idx = np.where(highway_types == highway)[0]
-
-                        spl = self.speed_limit_matrix.loc[[idx], [col_idx]].values
-                        los_spl_idx = np.digitize(spl, los_spl_bins)[0][0]
 
                         # Get corresponging los bins and bin traffic levels for each line segment
                         los_bins = np.array(self.lund_vasteras_ranges.iloc[highway_idx, los_spl_idx]).astype(float)
                         los_segments = np.digitize(inter_recs['Traffic'].values, los_bins) + 1
-
-                        # Get average speed and stop percentage for each segment
-                        spl = self.speed_limit_matrix.loc[[idx], [col_idx]].values
-                        dc_spl_idx = np.digitize(spl, dc_spl_bins)[0][0]
 
                         # Empty arrays for average velocity and stop percentage for each segment
                         avg_velocities = np.empty(los_segments.shape)
@@ -700,6 +719,12 @@ class Grid():
 
                             dc = self.dc_HBEFA.loc[(highway, dc_spl[dc_spl_idx], los_segments[j])]
                             avg_velocities[j], stop_percentages[j] = dc['Velocity'], dc['Stop %'] / 100
+
+                            # If the driving cycle is unavailable just go with default values
+                            # ie, slightly under speed limit and 8% stop time
+                            if np.isnan(avg_velocities[j]):
+                                stop = 0 if dc_spl[dc_spl_idx] > 50 else 0.08
+                                avg_velocities[j], stop_percentages[j] = dc_spl[dc_spl_idx] * 0.9, stop
 
                         # Get total length and length weights
                         total_len, len_weights = line.length, []
@@ -714,8 +739,17 @@ class Grid():
                         net_stop.append(np.sum(np.array(len_weights) * stop_percentages))
 
                     else:
-                        net_velocity.append(0)
-                        net_stop.append(0)
+
+                        dc = self.dc_HBEFA.loc[(highway, dc_spl[dc_spl_idx], 1)]
+                        avg_velocity, stop = dc['Velocity'], dc['Stop %'] / 100
+
+                        if np.isnan(avg_velocity):
+                            stop = 0 if dc_spl[dc_spl_idx] > 50 else 0.08
+                            avg_velocity = dc_spl[dc_spl_idx] * 0.9
+
+                        net_velocity.append(avg_velocity)
+                        net_stop.append(stop)
+                        
                 else:
                     net_velocity.append(0)
                     net_stop.append(0)
@@ -896,14 +930,12 @@ class Grid():
                     EF[grad==g] = ((1.27) + (0.0614*g) + (-0.0011*g**2) +
                                    (-0.00235*v) + (-1.33/v)) * EF[grad==g]
 
-
         else:
             print("Choose valid method")
 
 
         # Find total CO2 emitted over distance
         cost = EF * d
-        self.EF = EF
 
         # Add idling costs
         if idling == True:
@@ -940,7 +972,6 @@ class Grid():
 
             # Add costs from idling (0.4617g/s CO2 emitted while idling)
             cost = cost + (self.idling_times * 0.4617)
-
 
         # Round to nearest gram, make dataframe
         cost = np.round(cost)

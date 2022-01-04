@@ -15,9 +15,10 @@ def read_elev_res(input_filepath, output_filepath):
 
     # convert dict to pandas dataframe
     # with lat, long, elevation as cols
-    elevation_df = DataFrame.from_dict(elev_call_data["results"])
+    elevation_df = DataFrame.from_dict(elev_call_data['results'])
 
     # save as pickle
     elevation_df.to_pickle(output_filepath)
+
 
 # TODO combine into one file with curl command?
