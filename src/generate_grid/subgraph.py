@@ -32,12 +32,12 @@ nds, eds = nodes, edges
 #lat_b = (53.227, 53.414)
 
 # City Centre Bounding box
-#lon_b = (-6.32, -6.21)
-#lat_b = (53.325, 53.365)
+lon_b = (-6.32, -6.21)
+lat_b = (53.325, 53.365)
 
 # South Dublin Bounding box
-lon_b = (-6.375, -6.081)
-lat_b = (53.230, 53.325)
+#lon_b = (-6.375, -6.081)
+#lat_b = (53.230, 53.325)
 
 
 # Drop nodes outside bounding box
@@ -69,10 +69,10 @@ types
 # main_roads = types[[3, 4, 6, 7, 9, 10, 12, 13, 15, 16]]
 
 # City Centre indices
-# main_roads = types[[2, 3, 4, 5, 6, 8, 9, 10, 11]]
+main_roads = types[[2, 3, 4, 5, 6, 8, 9, 10, 11]]
 
 # South Dublin indices
-main_roads = types[[3, 4, 6, 7, 9, 10, 12, 13, 15, 16]]
+# main_roads = types[[3, 4, 6, 7, 9, 10, 12, 13, 15, 16]]
 
 eds = eds[eds['highway'].isin(main_roads)]
 
@@ -292,7 +292,7 @@ nds.plot(ax=ax, color='crimson', markersize=5)
 plt.xlim(lon_b)
 plt.ylim(lat_b)
 
-# plt.savefig("data/figures/dublin_south_junctions.jpeg", dpi=300)
+plt.savefig("data/figures/dublin_centre_k2.jpeg", dpi=300)
 # nx.write_gpickle(GG, "data/subgraphs/dublin_south_junctions.gpickle")
 print(eds.shape)
 plt.show()
