@@ -292,7 +292,7 @@ nds.plot(ax=ax, color='crimson', markersize=5)
 plt.xlim(lon_b)
 plt.ylim(lat_b)
 
-plt.savefig("data/figures/dublin_centre_k2.jpeg", dpi=300)
+# plt.savefig("data/figures/dublin_centre_k2.jpeg", dpi=300)
 # nx.write_gpickle(GG, "data/subgraphs/dublin_south_junctions.gpickle")
 print(eds.shape)
 plt.show()
