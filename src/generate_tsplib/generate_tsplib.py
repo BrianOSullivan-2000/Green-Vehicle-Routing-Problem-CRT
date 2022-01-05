@@ -1,7 +1,7 @@
 """ this script details a function to generate an instance file in TSPLib formatting """
 import numpy as np
 
-def generate_tsplib(filename, instance_name, capacity, edge_weight_type, edge_weight_format, nodes, demand,
+def generate_tsplib(filename, comment, instance_name, capacity, edge_weight_type, edge_weight_format, nodes, demand,
                     depot_index, edge_weights):
     """ Generate and save a .gvrp file in TSPLib format
 
@@ -18,7 +18,7 @@ def generate_tsplib(filename, instance_name, capacity, edge_weight_type, edge_we
     """
     with open(filename + ".gvrp", "w") as f:
         print("NAME: ", instance_name, file=f)
-        print("COMMENT: this is testing the generating format", file=f)
+        print("COMMENT: {}".format(comment), file=f)
         print("TYPE:  GVRP", file=f)
         print("DIMENSION: ", len(nodes), file=f)
         print("CAPACITY: ", capacity, file=f)

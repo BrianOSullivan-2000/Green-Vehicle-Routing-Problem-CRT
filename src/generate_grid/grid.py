@@ -159,9 +159,7 @@ class Grid():
         # Create DataFrame
         self.df = pd.DataFrame(data=data)
 
-        # Order vertices
-        self.df.loc[self.df['is_vertice'] != 0, 'is_vertice'] = np.arange(1,self.df.loc[self.df['is_vertice'] != 0, 'is_vertice'].shape[0]+1)
-        self.depot = self.df.loc[self.df['is_vertice'] == 1]
+        self.depot = self.df[self.df['is_vertice'] == 1]
 
 
 
@@ -186,6 +184,9 @@ class Grid():
 
         # Identify all vertices in grid
         data = self.df[self.df['is_vertice'] != 0].values
+
+        # Sort vertices
+        data = data[np.argsort(data[:, 3])]
 
         if mode == "Euclidean":
 
@@ -246,6 +247,9 @@ class Grid():
         # Identify all vertices in grid
         data = self.df[self.df['is_vertice'] != 0].values
 
+        # Sort Vertices
+        data = data[np.argsort(data[:, 3])]
+
         # Vertex elevations
         elevs = data[:, 2]
 
@@ -259,9 +263,7 @@ class Grid():
         gf[gf == (-1 * (np.inf))] = 0
 
         # Create dataframe of rise/run
-        self.gradient_matrix = pd.DataFrame(gf,
-                                            index=data[:, 3].astype(int),
-                                            columns=data[:, 3].astype(int))
+        self.gradient_matrix = pd.DataFrame(gf)
 
         # NA values along diagonal from TrueDivide error
         self.gradient_matrix = self.gradient_matrix.fillna(0)
@@ -518,6 +520,7 @@ class Grid():
 
             # Need indices of vertices for labelling
             data = self.df[self.df['is_vertice'] != 0].values[:, 3].astype(int)
+            data = data[np.argsort(data[:, 3])]
 
             # Create dataframe
             self.velocity_matrix = pd.DataFrame(speeds, index=data, columns=data)
@@ -773,6 +776,7 @@ class Grid():
 
         # Identify all vertices in grid
         data = self.df[self.df['is_vertice'] != 0].values
+        data = data[np.argsort(data[:, 3])]
 
         # Need distance and velocity matrices
         d = self.distance_matrix.to_numpy() / 1000
