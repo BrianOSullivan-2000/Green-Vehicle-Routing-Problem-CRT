@@ -26,13 +26,14 @@ summary_by_hr_d = summary_by_hr_d.reset_index(level="Day_in_Week")
 summary_by_hr_d.index = summary_by_hr_d.index.astype(int)
 
 # plot of mean counts by WE/WD per hour
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(1, 1, figsize=(7,7))
+plt.rcParams["font.serif"] = "Times New Roman"
 summary_by_hr_wdwe.groupby("Day_Type")["mean"].plot()
-plt.xlim(0, 25)
+plt.xlim(1, 24)
 plt.xlabel("Hour in Day")
 plt.ylabel("Mean Site Vehicle Count")
-plt.title("February 2020: Mean Site Vehicle Count by Hour in Day")
-plt.grid(True)
+plt.title("February 2020: Mean Site Vehicle Count by Hour in Day", fontsize=15)
+plt.grid(True, alpha=0.3)
 plt.legend(title="Day Type")
 
 # plot of std of counts by WE/WD per hour

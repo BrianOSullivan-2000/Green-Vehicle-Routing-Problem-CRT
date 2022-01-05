@@ -67,13 +67,17 @@ geometry = gpd.points_from_xy(valid_sites["Long"], valid_sites["Lat"], crs="EPSG
 sites_geo_df = gpd.GeoDataFrame(valid_sites, geometry=geometry, crs="EPSG:4326")
 
 # plot sites data on map of dublin
-fig, ax = plt.subplots()
-plt.grid(True)
-dub_eds.to_crs(epsg=4326).plot(ax=ax, color="lightgrey")
-sites_geo_df.plot(ax=ax, markersize=5, color="red")
-plt.title("Map of Dublin with SCATS Traffic Measurement Sites Marked")
+plt.rcParams["font.serif"] = "Times New Roman"
+fig, ax = plt.subplots(1, 1, figsize=(7,7))
+# plt.grid(True)
+dub_eds.to_crs(epsg=4326).plot(ax=ax, color="darkseagreen")
+sites_geo_df.plot(ax=ax, markersize=5, color="k")
+plt.xlim((-6.4, -6.03))
+plt.ylim((53.2, 53.44))
+plt.title("Map of Dublin Showing SCATS Traffic Measurement Sites", fontsize=15)
 plt.xlabel("Longitude")
 plt.ylabel("Latitude")
+plt.savefig("scats_sites.png", bbox_inches="tight")
 
 # save valid sites as plain df
 valid_sites.to_pickle(".\\data\\valid_scats_sites.pkl")

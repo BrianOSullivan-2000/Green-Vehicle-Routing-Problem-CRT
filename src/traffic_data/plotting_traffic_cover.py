@@ -1,8 +1,8 @@
 # this script plots traffic as a kde on dublin
 
-# import geopandas as gpd
+import geopandas as gpd
 import pandas as pd
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 # import geoplot as gplt
 # import geoplot.crs as gcrs
 import numpy as np
@@ -154,7 +154,7 @@ names = {'traffic':df['traffic'], 'longitude':df['longitude'], 'latitude':df['la
 gdf = gpd.GeoDataFrame(pd.DataFrame(data=names), columns=['traffic'], geometry=geometry, crs={'init' : 'epsg:4326'})
 
 # Get the map overlay of Dublin
-dub_df = gpd.read_file("../Brians_Lab/data/counties.shp")
+dub_df = gpd.read_file("./data/counties/counties.shp")
 dub_df = dub_df.set_crs(epsg=4326)
 dub_df = dub_df[dub_df["NAME_TAG"]=="Dublin"]
 
@@ -162,16 +162,19 @@ dub_df = dub_df[dub_df["NAME_TAG"]=="Dublin"]
 #gdf = gdf.iloc[::10, :]
 
 # Plotting
-fig, ax = plt.subplots(1, 1, figsize=(10,10))
+fig, ax = plt.subplots(1, 1, figsize=(7,7))
 dub_df.plot(ax=ax, color='none', edgecolor="k", alpha=1, zorder=3)
 
-gdf.plot(ax=ax, column='traffic',  cmap='viridis', marker=',', markersize=5,
-             alpha=1, zorder=2, legend=True)
-
+gdf.clip(mask=dub_df).plot(ax=ax, column='traffic',  cmap='viridis', marker=',', markersize=5,
+             alpha=1, zorder=2, legend=True, legend_kwds={'label': "Traffic Volumes",
+                        'orientation': "horizontal"})
 
 # Plot
 plt.xlim(lon_b)
 plt.ylim(lat_b)
+plt.title("Weekend 14:00 Interpolated Traffic", fontsize=15)
+plt.xlabel("Longitude")
+plt.ylabel("Latitude")
 plt.show()
 
 
