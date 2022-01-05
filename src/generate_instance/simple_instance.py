@@ -45,12 +45,12 @@ h = 0.0001
 
 n, depot, traffic, rain = "1000", "centre", "weekday_offpeak", "heavy"
 
-def create_instance(n, depot, traffic, rain):
+def create_instance(domain, n, depot, traffic, rain):
 
     # Make the Grid
     dublin = grid.Grid(lon_b=lon_b, lat_b=lat_b, h=h)
 
-    v_file = "dublin_centre/{}_n{}.pkl".format(depot, n)
+    v_file = "{}/{}_n{}.pkl".format(domain, depot, n)
 
     # add points to grid
     dublin.add_elevation_points(epoints, filename="data/elevation_matrices/{}".format(v_file))
@@ -99,38 +99,45 @@ depots = ["centre", "corner"]
 traffics = ["weekday_offpeak", "weekday_peak", "weekend_peak"]
 rains = ["heavy", "mild", "low"]
 
-for n in ns:
-    for depot in depots:
-        for traffic in traffics:
-            for rain in rains:
+for domain in ["m50", "dublin_south"]:
+    for n in ns:
+        for depot in depots:
+            for traffic in traffics:
+                for rain in rains:
 
-                dublin = create_instance(n, depot, traffic, rain)
 
-                nodes = dublin.df[dublin.df['is_vertice'] != 0].values
-                nodes = nodes[:, 0:2]
-                edge_weights = dublin.cost_matrix.to_numpy()
+                    if domain == "dublin_south" and n == "1000":
+                        print("Ignore this combo")
+                    else:
+                        dublin = create_instance(domain, n, depot, traffic, rain)
 
-                if traffic == "weekday_offpeak":
-                    t = "wdo"
-                elif traffic == "weekday_peak":
-                    t = "wdp"
-                elif traffic == "weekend_peak":
-                    t = "wep"
+                        nodes = dublin.df[dublin.df['is_vertice'] != 0].values
+                        nodes = nodes[:, 0:2]
+                        edge_weights = dublin.cost_matrix.to_numpy()
 
-                filename = "instances/dublin_centre/{}_rainfall/{}/{}_n{}".format(rain, traffic, depot, n)
-                instance_name = "DC_{}_{}_{}_n{}".format(depot[0:2], rain[0], t, n)
+                        if traffic == "weekday_offpeak":
+                            t = "wdo"
+                        elif traffic == "weekday_peak":
+                            t = "wdp"
+                        elif traffic == "weekend_peak":
+                            t = "wep"
 
-                print(instance_name)
+                        filename = "instances/{}/{}_rainfall/{}/{}_n{}".format(domain, rain, traffic, depot, n)
 
-                a1 = dublin.cost_matrix.values.flatten()[dublin.cost_matrix.values.flatten() != 0].shape[0]
-                a2 = dublin.distance_matrix.values.flatten()[dublin.distance_matrix.values.flatten() != 0].shape[0]
+                        d = "m50" if domain == "m50" else "DS"
+                        instance_name = "{}_{}_{}_{}_n{}".format(d, depot[0:2], rain[0], t, n)
 
-                if a1 != a2:
-                    print("{} has a bug")
+                        print(instance_name)
 
-                tsp.generate_tsplib(filename=filename, instance_name=instance_name, capacity=100,
-                                    edge_weight_type="EXPLICIT", edge_weight_format="SPARSE_MATRIX", nodes=nodes,
-                                    demand=np.random.randint(1,4,len(nodes)), depot_index=[0], edge_weights=edge_weights)
+                        a1 = dublin.cost_matrix.values.flatten()[dublin.cost_matrix.values.flatten() != 0].shape[0]
+                        a2 = dublin.distance_matrix.values.flatten()[dublin.distance_matrix.values.flatten() != 0].shape[0]
+
+                        if a1 != a2:
+                            print("{} has a bug")
+
+                        tsp.generate_tsplib(filename=filename, instance_name=instance_name, capacity=100,
+                                            edge_weight_type="EXPLICIT", edge_weight_format="SPARSE_MATRIX", nodes=nodes,
+                                            demand=np.random.randint(1,4,len(nodes)), depot_index=[0], edge_weights=edge_weights)
 
 
 # In[1]
