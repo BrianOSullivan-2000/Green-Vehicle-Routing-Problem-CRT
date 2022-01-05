@@ -749,7 +749,7 @@ class Grid():
 
                         net_velocity.append(avg_velocity)
                         net_stop.append(stop)
-                        
+
                 else:
                     net_velocity.append(0)
                     net_stop.append(0)

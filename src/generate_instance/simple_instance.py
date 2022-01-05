@@ -19,17 +19,26 @@ import src.generate_tsplib.generate_tsplib as tsp
 # In[1]
 
 
+# Extra Elevation points
+ds1 = pd.read_pickle("data/elevation_matrices/coords1.pkl")
+ds2 = pd.read_pickle("data/elevation_matrices/coords2.pkl")
+ds3 = pd.read_pickle("data/elevation_matrices/coords3.pkl")
+ds1 = ds1.append(ds2)
+ds1 = ds1.append(ds2)
+ds1.columns = ["Long", "Lat", "Elev"]
+
 # Scat site testing data
 ds = pd.read_pickle("data/scats_sites_with_elev.pkl")
 ds = ds.loc[:, "Lat":"Elev"]
+ds = ds.append(ds1)
 
 # Clean data up a little
 ds = ds.drop(ds[ds['Long']==0].index)
 ds = ds.drop(ds[ds['Lat']==0].index)
-ds = ds.drop(ds[ds['Long']>-6.08442].index)
-ds = ds.drop(ds[ds['Long']<-6.47592].index)
-ds = ds.drop(ds[ds['Lat']>53.45976].index)
-ds = ds.drop(ds[ds['Lat']<53.22938].index)
+ds = ds.drop(ds[ds['Long']>-6].index)
+ds = ds.drop(ds[ds['Long']<-6.5].index)
+ds = ds.drop(ds[ds['Lat']>53.5].index)
+ds = ds.drop(ds[ds['Lat']<53.1].index)
 ds = ds[["Long", "Lat", "Elev"]]
 
 # round values to grid values
@@ -43,7 +52,7 @@ lat_b = (53.1, 53.5)
 # Step size
 h = 0.0001
 
-n, depot, traffic, rain = "1000", "centre", "weekday_offpeak", "heavy"
+domain, n, depot, traffic, rain = "dublin_centre", "20", "centre", "weekday_offpeak", "mild"
 
 def create_instance(domain, n, depot, traffic, rain):
 
@@ -84,7 +93,7 @@ def create_instance(domain, n, depot, traffic, rain):
     dublin.read_weather(filename="data/weather_matrices/{}.pkl".format(rain))
     dublin.compute_weather_correction()
     dublin.read_skin_temp(filename="data/weather_matrices/Skin_temperature_averages.pkl")
-
+    np.where(dublin.x == 53.3488)
     dublin.compute_cost(method="copert with meet")
     np.set_printoptions(suppress=True)
 
@@ -182,8 +191,6 @@ line_geom = dublin.geom_matrix.values.flatten()
 costs = dublin.cost_matrix.values.flatten()[dublin.cost_matrix.values.flatten() != 0]
 line_geoms = dublin.geom_matrix.values.flatten()[dublin.geom_matrix.values.flatten() != 0]
 
-costs.shape
-
 dublin.stop_percentages_matrix.values.flatten()[dublin.stop_percentages_matrix.values.flatten() != 0].shape
 line_gdf = gpd.GeoDataFrame(data=costs, geometry=line_geoms, crs={'init' : 'epsg:4326'})
 
@@ -191,14 +198,22 @@ line_gdf = gpd.GeoDataFrame(data=costs, geometry=line_geoms, crs={'init' : 'epsg
 # In[1]
 
 
+import matplotlib.colors as colors
+def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
+    new_cmap = colors.LinearSegmentedColormap.from_list('trunc({n},{a:.2f},{b:.2f})'.format(n=cmap.name, a=minval, b=maxval), cmap(np.linspace(minval, maxval, n)))
+    return new_cmap
+
+cmap = plt.get_cmap('terrain')
+new_cmap = truncate_colormap(cmap, 0.2, 1)
+
 fig, ax = plt.subplots(1, 1, figsize=(10,10))
 
 # Get max and min elevations for plotting elevations colourmap
 node_elevs = df['Elevation'].values
 
 # Plot elevations
-gdf.plot(ax=ax, column='Elevation', cmap='terrain', vmin = min(node_elevs), vmax = max(node_elevs),
-         marker=',', markersize=15, legend=True, alpha=0.7, zorder=1)
+gdf.plot(ax=ax, column='Elevation', cmap=new_cmap, norm=colors.PowerNorm(gamma=0.6),
+         marker=',', markersize=15, legend=True, legend_kwds={"label":"Elevation (m above sea-level)"}, alpha=0.7, zorder=1)
 
 # Plot rainfall
 #dublin.weather.plot(ax=ax, column='Precipitation', cmap='Blues', legend=True,
@@ -212,24 +227,28 @@ gdf.plot(ax=ax, column='Elevation', cmap='terrain', vmin = min(node_elevs), vmax
 dub_df.plot(ax=ax, color="none", edgecolor="k", alpha=0.5, zorder=2)
 
 # Plot vertices
-gdf_v.plot(ax=ax, color="k", marker=',', markersize=5, zorder=5)
+#gdf_v.plot(ax=ax, color="k", alpha=0.3, marker=',', markersize=5, zorder=5)
 
 # Plot edges
-line_gdf.plot(ax=ax, alpha=1, color="k", linewidth=1, zorder=6)
+# line_gdf.plot(ax=ax, alpha=1, color="k", linewidth=0.4, zorder=6)
 
 # Can label vertices of points
 #for x, y, label in zip(gdf_v.geometry.x, gdf_v.geometry.y, gdf_v.is_vertice):
     #ax.annotate(label, xy=(x, y), xytext=(3, 3), textcoords="offset points")
 
 # Bounds for limits
-lon_b = (-6.42, -6.10)
-lat_b = (53.25, 53.45)
+lon_bb = (-6.42, -6.10)
+lat_bb = (53.25, 53.45)
 
 #lon_b = (-6.33, -6.19)
 #lat_b = (53.315, 53.37)
 
 # Plot
-plt.xlim(lon_b)
-plt.ylim(lat_b)
-plt.title("Elevation Map of Dublin (m above sea-level)")
+plt.xlim(lon_bb)
+plt.ylim(lat_bb)
+
+plt.xlabel("Longitude", fontsize=15)
+plt.ylabel("Latitude", fontsize=15)
+plt.title("Dublin Topography (m above sea-level)", size=20)
+plt.savefig("data/figures/Dublin_elevation.jpeg", dpi=300)
 plt.show()

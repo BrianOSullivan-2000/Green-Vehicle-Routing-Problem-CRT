@@ -68,7 +68,30 @@ for domain in domains:
                 read_elev_res(result, final)
 
 
-df = pd.read_pickle(final)
-import numpy as np
+# In[1]
 
-np.round(df.to_numpy()[:, [1, 0, 2]], 4)
+
+import numpy as np
+# Making more elevation points
+lon_b = (-6.421, -6.082)
+lat_b = (53.151, 53.342)
+h = 0.01
+
+x, y = np.arange(lon_b[0], lon_b[1], h), np.arange(lat_b[0], lat_b[1], h)
+x, y = np.round(x, 4), np.round(y, 4)
+yy, xx = np.meshgrid(y, x)
+coords = np.append(xx.reshape(-1,1), yy.reshape(-1,1), axis=1)
+coords.shape
+
+df = pd.DataFrame(coords, columns=["latitude", "longitude"])
+df.to_pickle("data/elevation_api_queries/coords.pkl")
+
+create_elev_query_file("data/elevation_api_queries/coords.pkl", "data/elevation_api_queries/coords_query.json")
+
+query = "data/elevation_api_queries/coords_query.json"
+out = "data/elevation_api_results/coords_results.json"
+
+os.system('curl -X POST https://api.open-elevation.com/api/v1/lookup -H\
+          "Content-Type:application/json" -d "@{}" --output {}'.format(query, out))
+
+read_elev_res(out, "data/elevation_matrices/coords1.pkl")

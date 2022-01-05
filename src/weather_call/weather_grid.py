@@ -41,7 +41,7 @@ gdf = pd.DataFrame(data=names)
 
 time_idx = df1['time'].iloc[1352400]
 gdf = df1[df1['time'] == time_idx]
-
+gdf
 number = 1350000
 
 for _ in range(100):
@@ -201,6 +201,10 @@ lat_b = (53.25, 53.45)
 
 plt.xlim(lon_b)
 plt.ylim(lat_b)
-plt.title("ERA5 Midday Rainfall 17th February 2011 (mm)", size=15)
-# plt.savefig("data/figures/Dublin_rainfall_fig.jpeg", dpi=300)
+
+plt.xlabel("Longitude", fontsize=15)
+plt.ylabel("Latitude", fontsize=15)
+
+plt.title("ERA5 Midday Rainfall 8th February 2011 (mm)", size=18)
+plt.savefig("data/figures/Dublin_rainfall_fig.jpeg", dpi=300)
 plt.show()
