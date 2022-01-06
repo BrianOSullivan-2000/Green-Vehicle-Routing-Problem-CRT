@@ -22,7 +22,7 @@ depots = ["centre", "corner"]
 traffics = ["weekday_offpeak", "weekday_peak", "weekend_peak"]
 rains = ["heavy", "mild", "low"]
 
-for domain in ["dublin_south"]:
+for domain in ["m50"]:
     for n in ns:
         for depot in depots:
             for traffic in traffics:
