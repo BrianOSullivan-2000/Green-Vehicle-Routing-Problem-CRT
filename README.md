@@ -10,6 +10,6 @@ Supervised under Paula Carroll, Conor Sweeney and Mel Devine at University Colle
 ________________________________________________
 For navigating the repository:
 
-- data: All datasets applied in the instance generation, including elevation datasets, traffic datasets, weather datasets, etc. Distance/speed limit/road class/geometry matrices for all benchmark instances generated are also included here.
-- instances: The final benchmark instances. Instances range from 20-1000 nodes of different regions of Dublin's road network.
-- src: All scripts used in data processing and instance generation. Each dataset is modelled in its respective folder. generate_grid/subgraph.py consists of filtering/cleaning of the road network. generate_grid/grid.py is where the final steps are taken for emissions calculations.
+- **data:**         All datasets applied in the instance generation, including elevation datasets, traffic datasets, weather datasets, etc. Distance/speed limit/road class/geometry matrices for all benchmark instances generated are also included here.
+- **instances:**    The final benchmark instances. Instances range from 20-1000 nodes of different regions of Dublin's road network.
+- **src:**          All scripts used in data processing and instance generation. Each dataset is modelled in its respective folder. generate_grid/subgraph.py consists of filtering/cleaning of the road network. generate_grid/grid.py is where the final steps are taken for emissions calculations.
