@@ -19,6 +19,3 @@ def read_elev_res(input_filepath, output_filepath):
 
     # save as pickle
     elevation_df.to_pickle(output_filepath)
-
-
-# TODO combine into one file with curl command?

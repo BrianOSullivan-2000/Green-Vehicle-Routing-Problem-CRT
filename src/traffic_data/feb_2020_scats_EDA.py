@@ -73,7 +73,3 @@ we_feb_traffic = feb_traffic_data[feb_traffic_data["Day_Type"] == "WE"].copy()
 # range normalise b/t 1 and 0
 we_feb_traffic["Norm_Traffic_Val"] = (we_feb_traffic["All_Detector_Vol"] - min(we_feb_traffic["All_Detector_Vol"])) /\
                                      (max(we_feb_traffic["All_Detector_Vol"]) - min(we_feb_traffic["All_Detector_Vol"]))
-
-# TODO: update with further stats if needed
-# TODO: make table for report
-# TODO: split by sites?

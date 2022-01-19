@@ -18,5 +18,3 @@ def create_elev_query_file(input_filepath, output_filepath):
     # write json file for use in query
     with open(output_filepath, 'w') as f:
         json.dump(call_file_data, f)
-
-# TODO comment better
